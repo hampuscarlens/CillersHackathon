@@ -1,3 +1,3 @@
-# Cillers Create System
+# Ciller hackathon repo
 
-Read the latest documentation at https://docs.cillers.com
+Making a scheduling app with the Cillers platform and the OpenAI api 
