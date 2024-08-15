@@ -1,7 +1,7 @@
 import React from 'react';
 import useAuth, { login, logout } from '../utils/useAuth';
-import Authenticated from './Authenticated';
-import Anonymous from './Anonymous';
+import Authenticated from '../components/Authenticated';
+import Anonymous from '../components/Anonymous';
 
 const LoadingLoginState = () => (
     <div>Waiting for login state info ...</div>

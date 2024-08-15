@@ -2,6 +2,7 @@ import uuid
 import strawberry
 from . import couchbase as cb, env
 
+
 @strawberry.type
 class Item:
     id: str
@@ -35,3 +36,4 @@ def list_items() -> list[Item]:
         f"SELECT name, META().id FROM {env.get_couchbase_bucket()}._default.items"
     )
     return [Item(**r) for r in result]
+

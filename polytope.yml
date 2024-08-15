@@ -8,19 +8,30 @@ templates:
     module: create-couchbase-bucket
     run-when:
       after: init-cb-cluster
-  - module: init-couchbase-bucket
+  - id: init-cb-bucket
+    module: init-couchbase-bucket
     run-when:
       after: create-cb-bucket
+  - curity
   - curity-db
   - oauth-agent
-  - curity
   - kong
   - web-app 
   - app-api
-  - redpanda
-  - redpanda-console
-  - kafka-connect
-  - create-connectors
+  - id: init-redpanda
+    module: redpanda
+    run-when:
+      after: init-cb-bucket
+  - module: redpanda-console
+    run-when:
+      after: init-cb-bucket
+  - id: init-kafka-connect
+    module: kafka-connect
+    run-when:
+      after: init-cb-bucket
+  - module: create-connectors
+    run-when:
+      after: init-cb-bucket
 
 - id: couchbase-aihack
   run:
