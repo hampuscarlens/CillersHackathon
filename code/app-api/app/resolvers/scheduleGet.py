@@ -1,7 +1,7 @@
 import strawberry
 from typing import List
 from ..auth import IsAuthenticated
-from ..models.models import Employee, EmployeeCreateInput, Schedule  # Import from models
+from ..models.models import Employee, EmployeeInput, Schedule  # Import from models
 from ..services.scheduleService import SchedulingService
 from ..services.employeeService import EmployeeService
 
@@ -10,13 +10,6 @@ from ..services.employeeService import EmployeeService
 employee_service = EmployeeService()
 scheduling_service = SchedulingService(employee_service)
 
-# GraphQL types for schedule management
-@strawberry.type
-class Schedule:
-    employee_id: str
-    shift_start: str
-    shift_end: str
-    location: str
 
 # Schedule-related GraphQL Queries and Mutations
 @strawberry.type

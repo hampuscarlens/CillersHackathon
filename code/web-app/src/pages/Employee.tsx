@@ -3,7 +3,7 @@ import { useMutation } from '@apollo/client';
 import { EMPLOYEES_CREATE } from '../graphql/employees'; // Import your GraphQL mutation
 
 interface EmployeePageProps {
-  goToPage: (page: 'schedule' | 'employee' | 'gptQuery') => void; // Generic navigation function
+  goToPage: (page: 'schedule' | 'employee' | 'gptQuery') => void;
 }
 
 // Function to calculate age based on the date of birth (dob)
@@ -21,6 +21,9 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ goToPage }) => {
   const [address, setAddress] = useState('');
   const [dob, setDob] = useState('');
   const [preferences, setPreferences] = useState('');
+  const [speciality, setspeciality] = useState(''); // New field for speciality
+  const [salary, setSalary] = useState<number>(0); // New field for salary
+  const [skillLevel, setSkillLevel] = useState<number>(100); // New field for skill level (default 100)
 
   // GraphQL mutation for adding employees
   const [addEmployee] = useMutation(EMPLOYEES_CREATE, {
@@ -31,7 +34,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ goToPage }) => {
 
   // Handle form submission
   const handleAddEmployee = async () => {
-    if (name.trim() && email.trim() && address.trim() && dob.trim() && preferences.trim()) {
+    if (name.trim() && email.trim() && address.trim() && dob.trim() && preferences.trim() && speciality.trim() && salary > 0) {
       const age = calculateAge(dob); // Calculate age based on dob
       try {
         await addEmployee({
@@ -39,9 +42,13 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ goToPage }) => {
             employees: [
               {
                 name,
+                email,
                 location: address, // Assume address maps to location
                 age, // Use calculated age based on dob
                 preferences,
+                speciality,
+                salary,
+                skillLevel: skillLevel, // Default skill level set to 100
               },
             ],
           },
@@ -52,6 +59,9 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ goToPage }) => {
         setAddress('');
         setDob('');
         setPreferences('');
+        setspeciality('');
+        setSalary(0);
+        setSkillLevel(100);
         alert('Employee added successfully!');
       } catch (error) {
         console.error('Error adding employee:', error);
@@ -138,7 +148,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ goToPage }) => {
             <div className="px-7 py-5 mt-5 max-w-full text-base whitespace-nowrap rounded-xl bg-zinc-100 text-stone-500 w-[513px] max-md:px-5">
               <input
                 type="date"
-                placeholder="Date of birth" // Ensure correct placeholder is shown
+                placeholder="Date of birth"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
                 className="w-full bg-zinc-100 text-stone-500 outline-none"
@@ -150,6 +160,33 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ goToPage }) => {
                 placeholder="Preferences"
                 value={preferences}
                 onChange={(e) => setPreferences(e.target.value)}
+                className="w-full bg-zinc-100 text-stone-500 outline-none"
+              />
+            </div>
+            <div className="px-7 py-5 mt-5 max-w-full text-base whitespace-nowrap rounded-xl bg-zinc-100 text-stone-500 w-[513px] max-md:px-5">
+              <input
+                type="text"
+                placeholder="speciality"
+                value={speciality}
+                onChange={(e) => setspeciality(e.target.value)}
+                className="w-full bg-zinc-100 text-stone-500 outline-none"
+              />
+            </div>
+            <div className="px-7 py-5 mt-5 max-w-full text-base whitespace-nowrap rounded-xl bg-zinc-100 text-stone-500 w-[513px] max-md:px-5">
+              <input
+                type="number"
+                placeholder="Salary"
+                value={salary}
+                onChange={(e) => setSalary(Number(e.target.value))}
+                className="w-full bg-zinc-100 text-stone-500 outline-none"
+              />
+            </div>
+            <div className="px-7 py-5 mt-5 max-w-full text-base whitespace-nowrap rounded-xl bg-zinc-100 text-stone-500 w-[513px] max-md:px-5">
+              <input
+                type="number"
+                placeholder="Skill Level (default 100)"
+                value={skillLevel}
+                onChange={(e) => setSkillLevel(Number(e.target.value))}
                 className="w-full bg-zinc-100 text-stone-500 outline-none"
               />
             </div>

@@ -4,7 +4,7 @@ from typing import List
 import datetime
 from .. import couchbase as cb, env
 from ..services.employeeService import EmployeeService
-from ..models.models import Employee, EmployeeCreateInput, Schedule
+from ..models.models import Employee, EmployeeInput, Schedule
 
 
 

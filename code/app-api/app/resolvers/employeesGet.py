@@ -1,10 +1,9 @@
-# employee_resolver.py
 import asyncio
 import strawberry
 from typing import List, AsyncGenerator
 from ..services.employeeService import EmployeeService
 from ..auth import IsAuthenticated
-from ..models.models import Employee, EmployeeCreateInput  # Import from models
+from ..models.models import Employee, EmployeeInput  # Updated Employee and EmployeeCreateInput imports
 
 employee_service = EmployeeService()
 
@@ -17,12 +16,13 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.field(permission_classes=[IsAuthenticated])
-    async def employee_create(self, employees: List[EmployeeCreateInput]) -> List[Employee]:
+    async def employee_create(self, employees: List[EmployeeInput]) -> List[Employee]:
         return employee_service.create_employees(employees)
 
     @strawberry.field(permission_classes=[IsAuthenticated])
-    async def employee_remove(self, ids: List[str]) -> List[str]:
+    async def employee_remove(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
         return employee_service.remove_employees(ids)
+
 
 @strawberry.type
 class Subscription:
