@@ -12,6 +12,8 @@ strawberry-graphql = {extras = ["debug-server"], version = "^0.229.1"}
 uvicorn = {extras = ["standard"], version = "^0.27.1"}
 couchbase = "^4.1.12"
 openai = "^1.40.6"
+cvxpy = "^1.5.2"
+numpy = "^1.26.4"
 
 [tool.poetry.group.dev]
 optional = true
