@@ -1,4 +1,5 @@
 import uuid
+import strawberry
 from typing import List
 from datetime import datetime
 from .. import couchbase as cb, env
@@ -32,7 +33,7 @@ class ShiftService:
         created_shifts = []
         for shift in shifts:
             id = str(uuid.uuid1())
-
+            created_shifts.append(shift)
             # Prepare specialities data to be inserted into Couchbase
             specialities_data = [
                 {
@@ -54,5 +55,35 @@ class ShiftService:
                                      'location': shift.location,
                                      'employee_ids': shift.employee_ids or []  # Store employee IDs, default to empty list
                                  }))
-        return 1
-      
+        return created_shifts
+    
+    def get_shift_by_id(self, shift_id: strawberry.ID) -> Shift:
+        # Use Couchbase DocRef to reference the document in the appropriate bucket and collection
+        doc_ref = cb.DocRef(bucket=env.get_couchbase_bucket(), collection='shifts', key=shift_id)
+        
+        # Fetch the document using the doc_ref
+        shift_data = cb.get(env.get_couchbase_conf(), doc_ref)
+
+        # Map the fetched data back to the Shift model
+        return Shift(
+            id=shift_id,
+            start_time=datetime.fromisoformat(shift_data['start_time']),
+            end_time=datetime.fromisoformat(shift_data['end_time']),
+            specialities=[specialityRequirement(speciality=speciality['speciality'], num_required=speciality['num_required']) for speciality in shift_data['specialities']],
+            location=shift_data.get('location', None),
+            employee_ids=shift_data.get('employee_ids', [])
+        )
+    
+    def update_shift(self, shift: Shift) -> Shift:
+        # Update the shift in the database
+        cb.replace(env.get_couchbase_conf(), shift.id, shift)
+        return shift
+
+    def remove_shifts(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
+        # Remove each shift by its ID
+        for shift_id in ids:
+            cb.remove(env.get_couchbase_conf(),
+                      cb.DocRef(bucket=env.get_couchbase_bucket(),
+                                collection='shifts',
+                                key=shift_id))
+        return ids

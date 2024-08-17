@@ -21,7 +21,6 @@ export const SHIFTS = gql`
 export const SHIFTS_CREATE = gql`
   mutation CreateShifts($shifts: [ShiftInput!]!) {
     createShifts(shifts: $shifts) {
-      id
       startTime
       endTime
       location
@@ -53,6 +52,16 @@ export const SHIFTS_CREATED = gql`
         speciality
         numRequired
       }
+      employeeIds
+    }
+  }
+`;
+
+// Mutation to add employees to a shift
+export const ADD_EMPLOYEES_TO_SHIFT = gql`
+  mutation AddEmployeesToShift($shiftId: ID!, $employeeIds: [ID!]!) {
+    addEmployeesToShift(shiftId: $shiftId, employeeIds: $employeeIds) {
+      id
       employeeIds
     }
   }

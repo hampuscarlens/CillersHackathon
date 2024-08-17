@@ -5,7 +5,9 @@ import {
   SHIFTS_CREATE,
   SHIFTS_REMOVE,
   SHIFTS_CREATED,
+  ADD_EMPLOYEES_TO_SHIFT // Import the mutation
 } from '../graphql/shifts'
+import { EMPLOYEES } from '../graphql/employees' // Import employees query
 
 interface SpecialityRequirement {
   speciality: string
@@ -21,14 +23,24 @@ interface Shift {
   employeeIds: string[]
 }
 
+interface Employee {
+  id: string
+  name: string
+}
+
 interface GetShiftsQuery {
   shifts: Shift[]
+}
+
+interface GetEmployeesQuery {
+  employees: Employee[]
 }
 
 const Shifts: React.FC = () => {
   const [newShiftStartTime, setNewShiftStartTime] = useState('')
   const [newShiftEndTime, setNewShiftEndTime] = useState('')
   const [newShiftLocation, setNewShiftLocation] = useState('')
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]); // State for selected employees
   
   // Define the type for newShiftspecialities using the SpecialityRequirement interface
   const [newShiftspecialities, setNewShiftspecialities] = useState<SpecialityRequirement[]>([
@@ -36,8 +48,10 @@ const Shifts: React.FC = () => {
   ])
   
   const { data, loading, error, subscribeToMore } = useQuery(SHIFTS)
+  const { data: employeesData } = useQuery<GetEmployeesQuery>(EMPLOYEES) // Fetch employees
   const [addShift] = useMutation(SHIFTS_CREATE, { errorPolicy: 'all' })
   const [removeShift] = useMutation(SHIFTS_REMOVE)
+  const [addEmployeesToShift] = useMutation(ADD_EMPLOYEES_TO_SHIFT) // Mutation to add employees to shift
 
   useEffect(() => {
     subscribeToMore({
@@ -128,6 +142,21 @@ const Shifts: React.FC = () => {
     setNewShiftspecialities([...newShiftspecialities, { speciality: '', numRequired: 0 }])
   }
 
+  const handleAddEmployees = async (shiftId: string) => {
+    if (selectedEmployeeIds.length > 0) {
+      try {
+        await addEmployeesToShift({
+          variables: { shiftId, employeeIds: selectedEmployeeIds }
+        });
+        alert('Employees added successfully!');
+      } catch (error) {
+        console.error('Error adding employees to shift:', error);
+      }
+    } else {
+      alert('Please select employees to add.');
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="navbar bg-base-300 text-neutral-content">
@@ -214,6 +243,28 @@ const Shifts: React.FC = () => {
                           <p key={idx}>{speciality.speciality} - {speciality.numRequired} employees</p>
                         ))}
                       </div>
+
+                      {/* Add Employees */}
+                      <div>
+                        <h3>Add Employees:</h3>
+                        <select multiple onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions, (option: any) => option.value);
+                          setSelectedEmployeeIds(selected);
+                        }}>
+                          {employeesData?.employees.map(employee => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="btn btn-xs btn-primary"
+                          onClick={() => handleAddEmployees(id)}
+                        >
+                          Add Selected Employees
+                        </button>
+                      </div>
+
                       <button
                         className="btn btn-xs btn-circle btn-error"
                         onClick={() => handleRemoveShift(id)}

@@ -29,7 +29,22 @@ class Mutation:
     @strawberry.field(permission_classes=[IsAuthenticated])
     async def remove_shifts(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
         return shift_service.remove_shifts(ids)
-
+    
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    async def add_employees_to_shift(self, shift_id: strawberry.ID, employee_ids: List[strawberry.ID]) -> Shift:
+        # Fetch the shift by its ID
+        shift = shift_service.get_shift_by_id(shift_id)
+        
+        # Add the new employee IDs to the shift, avoiding duplicates
+        shift.employee_ids = list(set(shift.employee_ids + employee_ids))
+        
+        # Update the shift in the database or service
+        shift_service.update_shift(shift)
+        
+        # Return the updated shift
+        return shift
+    
+    
 @strawberry.type
 class Subscription:
     @strawberry.subscription(permission_classes=[IsAuthenticated])
