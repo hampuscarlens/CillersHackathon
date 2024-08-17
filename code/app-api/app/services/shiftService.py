@@ -64,19 +64,41 @@ class ShiftService:
         # Fetch the document using the doc_ref
         shift_data = cb.get(env.get_couchbase_conf(), doc_ref)
 
+        # Access the content of the document
+        shift_content = shift_data.value
+
         # Map the fetched data back to the Shift model
         return Shift(
             id=shift_id,
-            start_time=datetime.fromisoformat(shift_data['start_time']),
-            end_time=datetime.fromisoformat(shift_data['end_time']),
-            specialities=[specialityRequirement(speciality=speciality['speciality'], num_required=speciality['num_required']) for speciality in shift_data['specialities']],
-            location=shift_data.get('location', None),
-            employee_ids=shift_data.get('employee_ids', [])
+            start_time=datetime.fromisoformat(shift_content['start_time']),
+            end_time=datetime.fromisoformat(shift_content['end_time']),
+            specialities=[specialityRequirement(speciality=speciality['speciality'], num_required=speciality['num_required']) for speciality in shift_content['specialities']],
+            location=shift_content.get('location', None),
+            employee_ids=shift_content.get('employee_ids', [])
         )
-    
+
     def update_shift(self, shift: Shift) -> Shift:
-        # Update the shift in the database
-        cb.replace(env.get_couchbase_conf(), shift.id, shift)
+        # Prepare the shift data to be updated (convert to serializable format)
+        shift_data = {
+            'start_time': shift.start_time.isoformat(),
+            'end_time': shift.end_time.isoformat(),
+            'specialities': [
+                {'speciality': speciality.speciality, 'num_required': speciality.num_required}
+                for speciality in shift.specialities
+            ],
+            'location': shift.location,
+            'employee_ids': shift.employee_ids
+        }
+
+        # Create a DocSpec object for upsert
+        spec = cb.DocSpec(
+            bucket=env.get_couchbase_bucket(),
+            collection='shifts',
+            key=shift.id,
+            data=shift_data  # Serialized shift data
+        )
+        cb.upsert(env.get_couchbase_conf(), spec)
+        
         return shift
 
     def remove_shifts(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:

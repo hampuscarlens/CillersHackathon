@@ -81,6 +81,17 @@ def insert(config: ConnectionConf, spec: DocSpec) -> Dict[str, Any]:
      .insert(spec.key, spec.data))
 
 @validate_arguments
+def upsert(config: ConnectionConf, spec: DocSpec) -> Dict[str, Any]:
+    """
+    Performs an upsert (update if exists, insert if not) on the given document.
+    """
+    return (get_cluster(config)
+     .bucket(spec.bucket)
+     .scope(spec.scope)
+     .collection(spec.collection)
+     .upsert(spec.key, spec.data))
+
+@validate_arguments
 def remove(config: ConnectionConf, ref: DocRef) -> Dict[str, Any]:
     return (get_cluster(config)
      .bucket(ref.bucket)
