@@ -18,16 +18,21 @@ scheduling_service = SchedulingService(employee_service, shift_service)
 @strawberry.type
 class Query:
     @strawberry.field
-    def schedule(self) -> List[List[int]]:
+    def schedule(self) -> str: # List[List[int]]:
+
         # Convert np.ndarray to a list of lists (or an appropriate structure)
         schedule_array = scheduling_service.create_schedule()
-        return schedule_array.tolist()  # Convert np.ndarray to a list
+        # return schedule_array.tolist()  # Convert np.ndarray to a list
+
+        return "Test string"
+
+
 
 @strawberry.type
 class Mutation:
     @strawberry.field(permission_classes=[IsAuthenticated])
-    async def regenerate_schedule(self) -> List[Schedule]:
+    async def regenerate_schedule(self) -> str: # -> List[Schedule]:
         """Regenerate and save a new employee schedule."""
         schedule = scheduling_service.create_schedule()
         scheduling_service.save_schedule(schedule)
-        return schedule
+        return "dummy" #  schedule

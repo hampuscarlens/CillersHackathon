@@ -33,6 +33,60 @@ class EmployeeService:
             ) for r in result
         ]
 
+
+    def set_availability_of_employee(self, employee_id: str, unavailability: List[UnavailabilityInput]) -> Employee:
+        # Step 1: Retrieve the existing employee record by employee_id
+        result = cb.get(
+            env.get_couchbase_conf(),
+            cb.DocRef(bucket=env.get_couchbase_bucket(),
+                    collection='employees',
+                    key=employee_id)
+        )
+
+        # Ensure the correct attribute is used to access the data
+        if not result or not result.value:
+            raise ValueError(f"Employee with id {employee_id} not found.")
+
+        existing_employee_data = result.value  # Assuming 'value' holds the document content
+
+        # Step 2: Prepare the new availability data
+        unavailability_data = [
+            {
+                'day_of_week': avail.day_of_week,
+                'start_time': avail.start_time.isoformat(),
+                'end_time': avail.end_time.isoformat(),
+            }
+            for avail in unavailability
+        ]
+
+        # Step 3: Update the existing employee's unavailability
+        updated_data = existing_employee_data
+        updated_data['unavailability'] = unavailability_data
+
+        # Step 4: Save the updated record back to Couchbase
+        cb.upsert(env.get_couchbase_conf(),
+                cb.DocSpec(bucket=env.get_couchbase_bucket(),
+                            collection='employees',
+                            key=employee_id,
+                            data=updated_data))
+
+        # Step 5: Return the updated Employee object
+        return Employee(
+            id=employee_id,
+            name=updated_data['name'],
+            age=updated_data['age'],
+            location=updated_data['location'],
+            email=updated_data['email'],
+            speciality=updated_data['speciality'],
+            salary=updated_data['salary'],
+            skill_level=updated_data.get('skill_level', 100),  # Default value if missing
+            preferences=updated_data.get('preferences', ''),
+            shift_ids=updated_data.get('shift_ids', []),
+            unavailability=unavailability  # Use the newly provided unavailability
+        )
+
+
+
     def create_employees(self, employees: List[EmployeeInput]) -> List[Employee]:
         created_employees = []
         for employee in employees:

@@ -14,6 +14,39 @@ from ..models.models import Employee, EmployeeInput, Schedule, Shift, ShiftInput
 logger = logging.getLogger(__name__)
 
 
+
+def convert_optimization_output_to_employee_vector(shift_assignment_matrix, employee_list):
+    """Convert the output of the optimization problem to a list of employees assigned to each shift."""
+    num_employees = len(employee_list)
+    num_shifts = len(shift_assignment_matrix[0])
+
+    assigned_employees = []
+    for j in range(num_shifts):
+        assigned_employee_indices = [
+            i for i in range(num_employees) if shift_assignment_matrix[i, j] == 1
+        ]
+        assigned_employees.append([employee_list[i] for i in assigned_employee_indices])
+
+    return assigned_employees
+
+
+def convert_employee_vector_to_string(employee_vector):
+    """Convert the employee vector to a string for logging."""
+    output = ""
+    for shift in employee_vector:
+        employee_names = [employee.name for employee in shift]
+        output += f"{employee_names}\n"
+    return output
+
+
+def add_employees_to_shifts(shifts, employee_schedule_vector):
+    """Add employees to the shifts based on the employee schedule vector."""
+    for shift, employees in zip(shifts, employee_schedule_vector):
+        shift.employee_ids = [employee.id for employee in employees]
+            
+    return shifts
+
+
 class SchedulingService:
     """Service for generating and managing employee schedules."""
 
@@ -42,13 +75,10 @@ class SchedulingService:
         OBS currently we have the same speciality requirements for each shift and it is hardcoded 
         """
 
-        specialities = [specialityRequirementInput(speciality="surgeon", num_required=3), 
-                        specialityRequirementInput(speciality="nurse", num_required=7), 
-                        specialityRequirementInput(speciality="secretary", num_required=2)]       # OBS hardcoded
-
+        specialities = [specialityRequirementInput(speciality="Surgeon", num_required=1)]  # Hardcoded
         generated_shifts = []
         shift_start_time = time(8, 0)  # Shifts start at 8:00 AM
-        shift_end_time = time(17, 0)  # Last shift must end by 5:00 PM (17:00)
+        shift_end_time = time(16, 0)  # Last shift must end by 5:00 PM (17:00)
 
         # Calculate the total number of days in the schedule period
         delta = end_date - start_date
@@ -73,7 +103,7 @@ class SchedulingService:
                 shift = ShiftInput(
                     start_time=shift_start,
                     end_time=shift_end,
-                    specialities=specialities,  # List of specialityRequirementInput
+                    specialities=specialities if shift_num == 0 else [],  # List of specialityRequirementInput
                     location=location,
                     employee_ids=[]  # No employees assigned yet
                 )
@@ -127,32 +157,37 @@ class SchedulingService:
         
         for shift in shifts:
             shift_specialities = shift.specialities  # contains a list of {speciality (str), num_required (int)}
+            shift_req_for_this_shift = []
             for speciality in shift_specialities:
-                shift_requirements.append([speciality.speciality, speciality.num_required])   # remember that a speciality contains 
-                """
-                speciality: str  # Name of the speciality (e.g., "Nurse", "Surgeon")
-                num_required: int  # Number of employees required for the speciality
-                """
+                shift_req_for_this_shift.append([speciality.speciality, speciality.num_required])
+            shift_requirements.append(shift_req_for_this_shift)
 
 
         # the speciality of each employee in the order the employees appear in the list
-        specialities = np.array([employee.speciality for employee in employees])
+        specialities = [employee.speciality for employee in employees]
 
         # Decision variables: x[i, j] is 1 if employee i works shift j
         x = cp.Variable((num_employees, num_shifts), boolean=True)
 
         # Constraints
         constraints = []
-        logger.info(msg=shift_requirements)
 
         # Each shift must be covered by the required number of employees for each speciality
         for j in range(num_shifts):
-            
-            for speciality_name, required_count in shift_requirements[j]:
+            for shift_requirement in shift_requirements[j]:
+                speciality_name = shift_requirement[0]
+                required_count = shift_requirement[1]
+
+                employee_indices_with_speciality = [
+                        i for i, speciality in enumerate(specialities) if speciality == speciality_name
+                ]
+
                 # Filter employees by their speciality and sum up their shift assignments
                 constraints.append(
-                    cp.sum(x[specialities == speciality_name, j]) == required_count
+                    cp.sum(x[employee_indices_with_speciality, j]) == required_count
                 )
+            # All shifts must have at least one employee assigned
+            constraints.append(cp.sum(x[:, j]) >= 1)
 
         # Each employee works no more than their max shifts
         for i in range(num_employees):
@@ -168,29 +203,68 @@ class SchedulingService:
         # Output the results as a shift assignment matrix
         return x.value
     
+
+
+    def save_schedule(self, schedule: List[Schedule]):
+        """Save the generated schedule into Couchbase."""
+        for entry in schedule:
+            # Generate a unique key, possibly using the schedule's id
+            key = str(entry.id)
+            
+            # Prepare the data to be inserted into Couchbase
+            data = {
+                "id": entry.id,
+                "name": entry.name,
+                "description": entry.description,
+                "start_date": entry.start_date.isoformat(),  # Convert datetime to string
+                "end_date": entry.end_date.isoformat(),      # Convert datetime to string
+                "shift_ids": entry.shift_ids,
+            }
+            
+            # Insert the data into Couchbase
+            cb.insert(
+                env.get_couchbase_conf(),
+                cb.DocSpec(
+                    bucket=env.get_couchbase_bucket(),
+                    collection='schedules',
+                    key=key,  # Use the generated key
+                    data=data  # Use the structured data
+                )
+            )
+
+
     
     
     def create_schedule(self):
         """Generate a schedule for employees."""
         self.employees = self.employee_service.list_employees()
+        
+        # Hardcoded start and end dates for the schedule
         start_date = datetime(2024, 8, 19)  # Start date (Monday)
-        end_date = datetime(2024, 8, 25)    # End date (Sunday)
+        end_date = datetime(2024, 8, 19)    # End date (Monday)
 
+        # Generate fixed shifts for the schedule
         self.shifts = self.generate_shifts_for_schedule(start_date=start_date, end_date=end_date, shift_duration=2, num_shifts_per_day=4)
-        self.schedule = self.generate_schedule(self.employees, self.shifts)
+        
+        # Generate the schedule using optimization
+        optimization_output = self.generate_schedule(self.employees, self.shifts, 1)
+        
+        # Convert the optimization output to a list of employees assigned to each shift
+        employee_schedule = convert_optimization_output_to_employee_vector(optimization_output, self.employees)
+        logger.info(f"Employee schedule: {convert_employee_vector_to_string(employee_schedule)}")
+        self.shifts = add_employees_to_shifts(self.shifts, employee_schedule)
+        
+        # Create the schedule object
+        # self.schedule = Schedule(
+        #     id=str(uuid.uuid1()),
+        #     name="Test Schedule",
+        #     start_date=start_date,
+        #     end_date=end_date,
+        #     shift_ids=[shift.id for shift in self.shifts]
+        # )
 
-        return self.schedule
+        # # Insert into database
+        # self.save_schedule([self.schedule])
 
-    def save_schedule(self, schedule: List[Schedule]):
-        """Save the generated schedule into Couchbase."""
-        for entry in schedule:
-            cb.insert(env.get_couchbase_conf(),
-                      cb.DocSpec(bucket=env.get_couchbase_bucket(),
-                                 collection='schedules',
-                                 key=f"{entry.employee_id}-{entry.shift_start}",
-                                 data={
-                                     'employee_id': entry.employee_id,
-                                     'shift_start': entry.shift_start,
-                                     'shift_end': entry.shift_end,
-                                     'location': entry.location
-                                 }))
+        return None
+
