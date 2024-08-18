@@ -17,8 +17,20 @@ class EmployeeService:
             """
         )
         # Map the result to the Employee model
-        return [
-            Employee(
+        employees = []
+        for r in result:
+            unavailability = []
+            if 'unavailability' in r:
+                unavailability = [
+                    UnavailabilityInput(
+                        employee_id=r['id'],
+                        day_of_week=avail['day_of_week'],
+                        start_time=avail['start_time'],
+                        end_time=avail['end_time']
+                    ) for avail in r['unavailability']
+                ]
+
+            employee = Employee(
                 id=r['id'],
                 name=r['name'],
                 age=r['age'],
@@ -29,9 +41,10 @@ class EmployeeService:
                 skill_level=r.get('skill_level', 100),  # Default value if missing
                 preferences=r.get('preferences', ''),
                 shift_ids=r.get('shift_ids', []),
-                unavailability=r.get('unavailability', [])
-            ) for r in result
-        ]
+                unavailability=unavailability
+            )
+            employees.append(employee)
+        return employees
 
 
     def set_availability_of_employee(self, employee_id: str, unavailability: List[UnavailabilityInput]) -> Employee:

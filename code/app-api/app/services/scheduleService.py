@@ -8,11 +8,27 @@ import numpy as np
 from .. import couchbase as cb, env
 from ..services.employeeService import EmployeeService
 from ..services.shiftService import ShiftService
-from ..models.models import Employee, EmployeeInput, Schedule, Shift, ShiftInput, specialityRequirementInput
+from ..models.models import (
+    Employee,
+    EmployeeInput,
+    Schedule,
+    Shift,
+    ShiftInput,
+    specialityRequirementInput,
+    UnavailabilityInput
+)
 
 
 logger = logging.getLogger(__name__)
 
+
+
+def get_index_of_shift(shifts, start_time):
+    """Get the index of the shift with the given start time."""
+    for i, shift in enumerate(shifts):
+        if shift.start_time == start_time:
+            return i
+    return None
 
 
 def convert_optimization_output_to_employee_vector(shift_assignment_matrix, employee_list):
@@ -189,6 +205,32 @@ class SchedulingService:
             # All shifts must have at least one employee assigned
             constraints.append(cp.sum(x[:, j]) >= 1)
 
+        # No employee can work when they are unavailable
+        for i in range(num_employees):
+
+            
+
+            employee_unavailability = employees[i].unavailability
+            
+            # Temp test
+            if i == 1:
+                employee_unavailability = [
+                    # For testing purposes, we set unavailability to 10-12 on Monday
+                    UnavailabilityInput(
+                    employee_id=employees[i].id,
+                    day_of_week="monday",
+                    start_time=datetime.combine(datetime(2024, 8, 19), time(10, 0)),
+                    end_time=datetime.combine(datetime(2024, 8, 19), time(12, 0)))
+                    ]
+            
+            
+            for unavailability in employee_unavailability:
+                index_of_unavailable_shift = get_index_of_shift(shifts, unavailability.start_time)
+                if index_of_unavailable_shift is None:
+                    logger.warning("Employee unavailability does not match any shift.")
+                    continue
+                constraints.append(x[i, index_of_unavailable_shift] == 0)
+
         # Each employee works no more than their max shifts
         for i in range(num_employees):
             constraints.append(cp.sum(x[i, :]) <= max_shifts_per_employee)
@@ -255,13 +297,13 @@ class SchedulingService:
         self.shifts = add_employees_to_shifts(self.shifts, employee_schedule)
         
         # Create the schedule object
-        # self.schedule = Schedule(
-        #     id=str(uuid.uuid1()),
-        #     name="Test Schedule",
-        #     start_date=start_date,
-        #     end_date=end_date,
-        #     shift_ids=[shift.id for shift in self.shifts]
-        # )
+        self.schedule = Schedule(
+            id=str(uuid.uuid1()),
+            name="Test Schedule",
+            start_date=start_date,
+            end_date=end_date,
+            shift_ids=[shift.id for shift in self.shifts]
+        )
 
         # # Insert into database
         # self.save_schedule([self.schedule])

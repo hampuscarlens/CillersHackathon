@@ -87,7 +87,6 @@ const Employees: React.FC = () => {
           salary: newEmployeeSalary,
           skillLevel: newEmployeeSkillLevel,
           preferences: newEmployeePreferences,
-          unavailability: [] // Can handle unavailability here if needed in the future
         }]
       }
     })
