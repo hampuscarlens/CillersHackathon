@@ -3,6 +3,7 @@ from typing import List
 from .. import couchbase as cb, env
 from ..models.models import Employee, EmployeeInput, UnavailabilityInput
 import strawberry
+from datetime import datetime
 
 class EmployeeService:
     """Service for interacting with employees."""
@@ -25,8 +26,9 @@ class EmployeeService:
                     UnavailabilityInput(
                         employee_id=r['id'],
                         day_of_week=avail['day_of_week'],
-                        start_time=avail['start_time'],
-                        end_time=avail['end_time']
+                        # Convert string times (in start_time and end_time) to time objects
+                        start_time=datetime.strptime(avail['start_time'], "%H:%M:%S").time(),
+                        end_time=datetime.strptime(avail['end_time'], "%H:%M:%S").time()
                     ) for avail in r['unavailability']
                 ]
 

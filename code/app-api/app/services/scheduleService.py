@@ -71,7 +71,7 @@ class SchedulingService:
         self.shift_service = shift_serive
 
     def generate_shifts_for_schedule(self, start_date: datetime, end_date: datetime, shift_duration: int,
-                                      num_shifts_per_day: int, specialities: List[specialityRequirementInput] = None, location: str = None) -> List[ShiftInput]:
+                                      num_shifts_per_day: int, specialities: List[specialityRequirementInput] = None, location: str = None) -> List[Shift]:
         """
         Generate shifts for a given schedule period with shifts starting at 8 AM and ending by 5 PM.
 
@@ -84,7 +84,7 @@ class SchedulingService:
         - location (str, optional): Location of the shifts.
 
         Returns:
-        - List[ShiftInput]: List of generated shifts without employees assigned.
+        - List[Shift]: List of generated shifts without employees assigned.
         """
 
         """
@@ -115,8 +115,9 @@ class SchedulingService:
                 if shift_end.time() > shift_end_time:
                     break  # Don't generate a shift that would go beyond 5 PM
 
-                # Create the ShiftInput object without employees
-                shift = ShiftInput(
+                # Create the Shift object without employees
+                shift = Shift(
+                    id=str(uuid.uuid1()),
                     start_time=shift_start,
                     end_time=shift_end,
                     specialities=specialities if shift_num == 0 else [],  # List of specialityRequirementInput
@@ -207,9 +208,6 @@ class SchedulingService:
 
         # No employee can work when they are unavailable
         for i in range(num_employees):
-
-            
-
             employee_unavailability = employees[i].unavailability
             
             # Temp test
@@ -306,7 +304,7 @@ class SchedulingService:
         )
 
         # # Insert into database
-        # self.save_schedule([self.schedule])
+        self.save_schedule([self.schedule])
 
         return None
 

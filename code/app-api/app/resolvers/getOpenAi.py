@@ -82,8 +82,8 @@ def convert_to_shift_time_ranges(list_of_time_ranges: ListOfTimeRanges) -> ListO
     predefined_slots = [
         (8, 10),
         (10, 12),
-        (13, 15),
-        (15, 17)
+        (12, 14),
+        (14, 16)
     ]
     
     result_time_ranges = []
@@ -116,7 +116,7 @@ def get_time_ranges(client, user_input):
         model="gpt-4o-2024-08-06",
         messages=[
             {"role": "system", "content": "You are an assistant that interprets when a user is unavailable during the week."},
-            {"role": "system", "content": "You only give answers during the week days, not weekends. Your answers only lie between 8 and 17"},
+            {"role": "system", "content": "You only give answers during the week days, not weekends. Your answers only lie between 8 and 16"},
             {"role": "user", "content": user_input},
         ],
         response_format=ListOfTimeRanges,
