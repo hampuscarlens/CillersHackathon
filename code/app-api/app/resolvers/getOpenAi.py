@@ -22,6 +22,7 @@ class TimeRange(BaseModel):
     start_time: int
     end_time: int
     day: str
+    person: str
 
 class ListOfTimeRanges(BaseModel):
     time_ranges: list[TimeRange]
@@ -98,7 +99,8 @@ def convert_to_shift_time_ranges(list_of_time_ranges: ListOfTimeRanges) -> ListO
                 result_time_ranges.append(TimeRange(
                     start_time=slot_start,
                     end_time=slot_end,
-                    day=day
+                    day=day,
+                    person=time_range.person
                 ))
 
     return ListOfTimeRanges(time_ranges=result_time_ranges)
@@ -106,7 +108,7 @@ def convert_to_shift_time_ranges(list_of_time_ranges: ListOfTimeRanges) -> ListO
 def convert_list_of_time_ranges_to_string(time_ranges):
     time_ranges_string = ""
     for time_range in time_ranges:
-        time_ranges_string += f"{time_range.day} from {time_range.start_time} to {time_range.end_time}\n"
+        time_ranges_string += f"Person {time_range.person} on {time_range.day} from {time_range.start_time} to {time_range.end_time}\n"
     return time_ranges_string
 
 
@@ -140,6 +142,14 @@ def determine_if_further_questions_needed(client, user_input):
     return completion.choices[0].message.parsed
 
 
+
+def find_employee_with_name(employees, name):
+    for employee in employees:
+        if employee.name.lower() == name.lower():
+            return employee
+    return None
+
+
 @strawberry.type
 class Query:
     @strawberry.field(permission_classes=[IsAuthenticated])
@@ -150,6 +160,7 @@ class Query:
             logger.info(f"Received prompt: {prompt}")
 
             response = get_time_ranges(client, prompt)
+            name_of_employee = response.time_ranges[0].person
             formatted_response = convert_to_shift_time_ranges(response)
 
             message_for_printing = convert_list_of_time_ranges_to_string(formatted_response.time_ranges)
@@ -157,8 +168,8 @@ class Query:
 
             unavailability_input_list = convert_shift_time_ranges_to_unavailability_input(formatted_response)
             all_employees = employee_service.list_employees()
-            id_of_first_employee = all_employees[0].id
-            employee_service.set_availability_of_employee(id_of_first_employee, unavailability_input_list)
+            id_of_employee = find_employee_with_name(all_employees, name_of_employee).id
+            employee_service.set_availability_of_employee(id_of_employee, unavailability_input_list)
 
             return types.Message(message=message_for_printing)
 
