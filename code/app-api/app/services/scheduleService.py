@@ -23,6 +23,28 @@ logger = logging.getLogger(__name__)
 
 
 
+def convert_slack_result_to_string(employee_id_to_overtime, employees):
+    # Return the slack result as a string with format
+    # "Employee {name} has {overtime_count} overtime shifts."
+    slack_result = ""
+    for employee_id, overtime_count in employee_id_to_overtime.items():
+        employee = next((emp for emp in employees if emp.id == employee_id), None)
+        if employee:
+            slack_result += f"Employee {employee.name} has {overtime_count} overtime shifts.\n"
+    return slack_result
+
+
+
+def interpret_slack_variables(slack_values, employees):
+    # Slack is num_employees
+    # Use this to return a dictionary of employee IDs and the number of shifts they work overtime
+
+    employee_overtime = {}
+    for i in range(len(employees)):
+        employee_overtime[employees[i].id] = slack_values[i]
+    return employee_overtime
+
+
 def get_index_of_shift(shifts, start_time):
     """Get the index of the shift with the given start time."""
     for i, shift in enumerate(shifts):
@@ -137,6 +159,7 @@ class SchedulingService:
 
         Returns:
         - A matrix where 1 means the employee is assigned to that shift, 0 means not assigned.
+        - Also returns the slack variables for overtime.
         """
         
         """OBS
@@ -180,6 +203,9 @@ class SchedulingService:
         # Decision variables: x[i, j] is 1 if employee i works shift j
         x = cp.Variable((num_employees, num_shifts), boolean=True)
 
+        # Slack variables for overtime
+        slack = cp.Variable(num_employees, nonneg=True)
+
         # Constraints
         constraints = []
 
@@ -213,11 +239,10 @@ class SchedulingService:
 
         # Each employee works no more than their max shifts
         for i in range(num_employees):
-            constraints.append(cp.sum(x[i, :]) <= max_shifts_per_employee)
+            constraints.append(cp.sum(x[i, :]) <= max_shifts_per_employee + slack[i])
 
-        # Dummy objective function (since we don't care about optimization here)
-        objective = cp.Minimize(0)
-
+        # Minimize slack
+        objective = cp.Minimize(cp.sum(slack))
 
         self.problem_status = False   # problem status is false if not solved properly
 
@@ -239,7 +264,7 @@ class SchedulingService:
             logger.info(f"Problem status: {problem.status}")
 
         # Output the results as a shift assignment matrix
-        return x.value
+        return x.value, slack.value
     
 
     def save_schedule(self, schedule: List[Schedule]):
@@ -291,9 +316,16 @@ class SchedulingService:
         self.shifts = [self.shift_service.get_shift_by_id(id) for id in shift_ids]
         
         # Generate the schedule using optimization
-        optimization_output = self.generate_schedule(self.employees, self.shifts, 1)
+        optimization_output, slack_output = self.generate_schedule(self.employees, self.shifts, 1)
+
+        logger.info(f"Slack: {slack_output}")
 
         if self.problem_status:
+            formatted_slack = interpret_slack_variables(slack_output, self.employees)
+            logger.info(f"Overtime: {convert_slack_result_to_string(formatted_slack, self.employees)}")
+
+            # TODO: Use the slack info to add to database and display in the UI
+
             # Convert the optimization output to a list of employees assigned to each shift
             employee_schedule = convert_optimization_output_to_employee_vector(optimization_output, self.employees)
             logger.info(f"Employee schedule: {convert_employee_vector_to_string(employee_schedule)}")
