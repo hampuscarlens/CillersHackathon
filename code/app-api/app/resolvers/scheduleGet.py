@@ -1,5 +1,5 @@
 import strawberry
-from typing import List
+from typing import List, Optional
 from ..auth import IsAuthenticated
 from ..models.models import Employee, EmployeeInput, Schedule  # Import from models
 from ..services.scheduleService import SchedulingService
@@ -14,25 +14,28 @@ shift_service = ShiftService()
 scheduling_service = SchedulingService(employee_service, shift_service)
 
 
-# Schedule-related GraphQL Queries and Mutations
 @strawberry.type
 class Query:
     @strawberry.field
-    def schedule(self) -> str: # List[List[int]]:
-
-        # Convert np.ndarray to a list of lists (or an appropriate structure)
-        schedule_array = scheduling_service.create_schedule()
-        # return schedule_array.tolist()  # Convert np.ndarray to a list
-
-        return "Test string"
+    def get_schedule(self, schedule_id: Optional[strawberry.ID] = None) -> Optional[Schedule]:
+        """
+        Fetch a specific schedule based on the provided schedule ID, or the latest schedule if no ID is provided.
+        """
+        return scheduling_service.get_schedule_by_id(schedule_id)
 
 
 
 @strawberry.type
 class Mutation:
     @strawberry.field(permission_classes=[IsAuthenticated])
-    async def regenerate_schedule(self) -> str: # -> List[Schedule]:
-        """Regenerate and save a new employee schedule."""
-        schedule = scheduling_service.create_schedule()
-        scheduling_service.save_schedule(schedule)
-        return "dummy" #  schedule
+    async def create_schedule(self) -> Schedule:
+        """
+        Create a new schedule and return it.
+        """
+        # Create the schedule
+        scheduling_service.create_schedule()
+
+        # Fetch and return the latest schedule (the one just created)
+        latest_schedule = scheduling_service.get_schedule_by_id()
+
+        return latest_schedule

@@ -30,10 +30,10 @@ class ShiftService:
         ]
 
     def create_shifts(self, shifts: List[ShiftInput]) -> List[Shift]:
-        created_shifts = []
+        shift_ids = []
         for shift in shifts:
             id = str(uuid.uuid1())
-            created_shifts.append(shift)
+            shift_ids.append(id)
             # Prepare specialities data to be inserted into Couchbase
             specialities_data = [
                 {
@@ -55,7 +55,7 @@ class ShiftService:
                                      'location': shift.location,
                                      'employee_ids': shift.employee_ids or []  # Store employee IDs, default to empty list
                                  }))
-        return created_shifts
+        return shift_ids
     
     def get_shift_by_id(self, shift_id: strawberry.ID) -> Shift:
         # Use Couchbase DocRef to reference the document in the appropriate bucket and collection
@@ -101,6 +101,32 @@ class ShiftService:
         
         return shift
 
+
+    def add_employees_to_shift(self, shift: Shift, employee_ids = List[strawberry.ID]) -> Shift:
+        # Prepare the shift data to be updated (convert to serializable format)
+        shift_data = {
+            'start_time': shift.start_time.isoformat(),
+            'end_time': shift.end_time.isoformat(),
+            'specialities': [
+                {'speciality': speciality.speciality, 'num_required': speciality.num_required}
+                for speciality in shift.specialities
+            ],
+            'location': shift.location,
+            'employee_ids': employee_ids
+        }
+
+        # Create a DocSpec object for upsert
+        spec = cb.DocSpec(
+            bucket=env.get_couchbase_bucket(),
+            collection='shifts',
+            key=shift.id,
+            data=shift_data  # Serialized shift data
+        )
+        cb.upsert(env.get_couchbase_conf(), spec)
+        
+        return shift
+    
+
     def remove_shifts(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
         # Remove each shift by its ID
         for shift_id in ids:
@@ -109,3 +135,13 @@ class ShiftService:
                                 collection='shifts',
                                 key=shift_id))
         return ids
+
+    def delete_all_shifts(self) -> List[strawberry.ID]:
+        # List all shifts to get their IDs
+        all_shifts = self.list_shifts()
+
+        # Extract the IDs of all shifts
+        shift_ids = [shift.id for shift in all_shifts]
+
+        # Use the remove_shifts function to delete all shifts by ID
+        return self.remove_shifts(shift_ids)

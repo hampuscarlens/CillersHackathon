@@ -1,7 +1,7 @@
 # service.py
 import uuid
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta, time
 import cvxpy as cp
 import numpy as np
@@ -55,12 +55,7 @@ def convert_employee_vector_to_string(employee_vector):
     return output
 
 
-def add_employees_to_shifts(shifts, employee_schedule_vector):
-    """Add employees to the shifts based on the employee schedule vector."""
-    for shift, employees in zip(shifts, employee_schedule_vector):
-        shift.employee_ids = [employee.id for employee in employees]
-            
-    return shifts
+
 
 
 class SchedulingService:
@@ -116,8 +111,7 @@ class SchedulingService:
                     break  # Don't generate a shift that would go beyond 5 PM
 
                 # Create the Shift object without employees
-                shift = Shift(
-                    id=str(uuid.uuid1()),
+                shift = ShiftInput(
                     start_time=shift_start,
                     end_time=shift_end,
                     specialities=specialities if shift_num == 0 else [],  # List of specialityRequirementInput
@@ -128,8 +122,8 @@ class SchedulingService:
                 # Add the generated shift to the list
                 generated_shifts.append(shift)
 
-        # create shifts from shift inputs, store in database and return
-        return self.shift_service.create_shifts(generated_shifts)
+        
+        return self.shift_service.create_shifts(generated_shifts)  # creates the shifts in the database and returns a list of shift ids
     
 
     def generate_schedule(self, employees: List[Employee], shifts: List[Shift], max_shifts_per_employee = 100):
@@ -236,14 +230,29 @@ class SchedulingService:
         # Dummy objective function (since we don't care about optimization here)
         objective = cp.Minimize(0)
 
+
+        self.problem_status = False   # problem status is false if not solved properly
+
+
         # Solve the problem
         problem = cp.Problem(objective, constraints)
         problem.solve(solver=cp.GUROBI)  # Use any available solver
 
+
+        # Check the status of the problem
+        if problem.status == cp.OPTIMAL:
+            logger.info("Problem solved successfully!")
+            self.problem_status = True
+        elif problem.status == cp.INFEASIBLE:
+            logger.info("Problem is infeasible.")
+        elif problem.status == cp.UNBOUNDED:
+            logger.info("Problem is unbounded.")
+        else:
+            logger.info(f"Problem status: {problem.status}")
+
         # Output the results as a shift assignment matrix
         return x.value
     
-
 
     def save_schedule(self, schedule: List[Schedule]):
         """Save the generated schedule into Couchbase."""
@@ -272,9 +281,14 @@ class SchedulingService:
                 )
             )
 
+    def add_employees_to_shifts(self, employee_schedule_vector):
+        """Add employees to the shifts based on the employee schedule vector."""
+        for shift, employees in zip(self.shifts, employee_schedule_vector):
+            employee_ids = [employee.id for employee in employees]
+            self.shift_service.add_employees_to_shift(shift, employee_ids)
+            
+        return 
 
-    
-    
     def create_schedule(self):
         """Generate a schedule for employees."""
         self.employees = self.employee_service.list_employees()
@@ -284,27 +298,96 @@ class SchedulingService:
         end_date = datetime(2024, 8, 19)    # End date (Monday)
 
         # Generate fixed shifts for the schedule
-        self.shifts = self.generate_shifts_for_schedule(start_date=start_date, end_date=end_date, shift_duration=2, num_shifts_per_day=4)
+        shift_ids = self.generate_shifts_for_schedule(start_date=start_date, end_date=end_date, shift_duration=2, num_shifts_per_day=4)
+        
+        self.shifts = [self.shift_service.get_shift_by_id(id) for id in shift_ids]
         
         # Generate the schedule using optimization
         optimization_output = self.generate_schedule(self.employees, self.shifts, 1)
-        
-        # Convert the optimization output to a list of employees assigned to each shift
-        employee_schedule = convert_optimization_output_to_employee_vector(optimization_output, self.employees)
-        logger.info(f"Employee schedule: {convert_employee_vector_to_string(employee_schedule)}")
-        self.shifts = add_employees_to_shifts(self.shifts, employee_schedule)
-        
-        # Create the schedule object
-        self.schedule = Schedule(
-            id=str(uuid.uuid1()),
-            name="Test Schedule",
-            start_date=start_date,
-            end_date=end_date,
-            shift_ids=[shift.id for shift in self.shifts]
-        )
 
-        # # Insert into database
-        self.save_schedule([self.schedule])
+        if self.problem_status:
+            # Convert the optimization output to a list of employees assigned to each shift
+            employee_schedule = convert_optimization_output_to_employee_vector(optimization_output, self.employees)
+            logger.info(f"Employee schedule: {convert_employee_vector_to_string(employee_schedule)}")
+            self.add_employees_to_shifts(employee_schedule)
+            
+            # Create the schedule object
+            self.schedule = Schedule(
+                id=str(uuid.uuid1()),
+                name="Test Schedule",
+                start_date=start_date,
+                end_date=end_date,
+                shift_ids=[shift.id for shift in self.shifts]
+            )
+
+            # # Insert into database
+            self.save_schedule([self.schedule])
+        else:
+            logger.warning(f"optimization was not successful")
+        
 
         return None
 
+
+    def get_schedule_by_id(self, schedule_id: Optional[str] = None) -> Optional[Schedule]:
+        """
+        Fetch a schedule by its ID, or the latest schedule if no ID is provided.
+
+        Args:
+            - schedule_id (Optional[str]): The ID of the schedule to fetch. If None, fetch the latest schedule.
+
+        Returns:
+            - Schedule: The schedule object if found.
+            - None: If the schedule with the given ID or the latest schedule is not found.
+        """
+        try:
+            if schedule_id:
+                # Fetch the schedule by the provided ID
+                doc_ref = cb.DocRef(bucket=env.get_couchbase_bucket(), collection='schedules', key=schedule_id)
+                schedule_data = cb.get(env.get_couchbase_conf(), doc_ref).value
+            else:
+                # If no schedule_id is provided, fetch the latest schedule
+                schedule_data = self.get_latest_schedule_data()  # Method to fetch the latest schedule data
+
+            if not schedule_data:
+                return None
+
+            # Map the Couchbase document data to the Schedule model
+            schedule = Schedule(
+                id=schedule_data['id'],
+                name=schedule_data.get('name', ''),
+                description=schedule_data.get('description', ''),
+                start_date=datetime.fromisoformat(schedule_data['start_date']),
+                end_date=datetime.fromisoformat(schedule_data['end_date']),
+                shift_ids=schedule_data['shift_ids']
+            )
+            return schedule
+        except KeyError:
+            logger.warning(f"Schedule with ID {schedule_id} not found.")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching schedule: {str(e)}")
+            return None
+
+    def get_latest_schedule_data(self) -> Optional[dict]:
+        """
+        Fetch the latest schedule from the database.
+
+        Returns:
+            - dict: The latest schedule data.
+            - None: If no schedules are found.
+        """
+        try:
+            # Query to fetch all schedules, sorted by date
+            result = cb.exec(
+                env.get_couchbase_conf(),
+                f"""
+                SELECT META().id, name, description, start_date, end_date, shift_ids
+                FROM {env.get_couchbase_bucket()}._default.schedules
+                ORDER BY end_date DESC LIMIT 1
+                """
+            )
+            return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error fetching latest schedule: {str(e)}")
+            return None

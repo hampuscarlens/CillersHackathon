@@ -5,7 +5,8 @@ import {
   SHIFTS_CREATE,
   SHIFTS_REMOVE,
   SHIFTS_CREATED,
-  ADD_EMPLOYEES_TO_SHIFT // Import the mutation
+  ADD_EMPLOYEES_TO_SHIFT,
+  SHIFTS_DELETE_ALL // Import the mutation
 } from '../graphql/shifts'
 import { EMPLOYEES } from '../graphql/employees' // Import employees query
 
@@ -42,7 +43,6 @@ const Shifts: React.FC = () => {
   const [newShiftLocation, setNewShiftLocation] = useState('')
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]); // State for selected employees
   
-  // Define the type for newShiftspecialities using the SpecialityRequirement interface
   const [newShiftspecialities, setNewShiftspecialities] = useState<SpecialityRequirement[]>([
     { speciality: '', numRequired: 0 }
   ])
@@ -51,7 +51,8 @@ const Shifts: React.FC = () => {
   const { data: employeesData } = useQuery<GetEmployeesQuery>(EMPLOYEES) // Fetch employees
   const [addShift] = useMutation(SHIFTS_CREATE, { errorPolicy: 'all' })
   const [removeShift] = useMutation(SHIFTS_REMOVE)
-  const [addEmployeesToShift] = useMutation(ADD_EMPLOYEES_TO_SHIFT) // Mutation to add employees to shift
+  const [deleteAllShifts] = useMutation(SHIFTS_DELETE_ALL) // Mutation for deleting all shifts
+  const [addEmployeesToShift] = useMutation(ADD_EMPLOYEES_TO_SHIFT)
 
   useEffect(() => {
     subscribeToMore({
@@ -125,10 +126,22 @@ const Shifts: React.FC = () => {
     })
   }
 
+  const handleDeleteAllShifts = async () => {
+    if (window.confirm('Are you sure you want to delete all shifts?')) {
+      try {
+        const result = await deleteAllShifts();
+        console.log('Deleted shift IDs:', result.data.deleteAllShifts);
+        alert('All shifts deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting all shifts:', error);
+        alert('An error occurred while deleting all shifts.');
+      }
+    }
+  }
+
   const handleSpecialityChange = (index: number, field: keyof SpecialityRequirement, value: string | number) => {
     const updatedspecialities = [...newShiftspecialities]
 
-    // Ensure the type is properly narrowed for the field value
     if (field === 'numRequired') {
       updatedspecialities[index][field] = Number(value);
     } else {
@@ -173,6 +186,12 @@ const Shifts: React.FC = () => {
             <h1 className="card-title self-center text-2xl font-bold mb-4">
               Shift List
             </h1>
+            <button
+              className="btn btn-error btn-block mb-4"
+              onClick={handleDeleteAllShifts}
+            >
+              Delete All Shifts
+            </button>
             <div className="form-control w-full">
               <div className="space-y-2">
                 <input

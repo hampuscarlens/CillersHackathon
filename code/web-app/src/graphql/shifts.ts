@@ -17,6 +17,18 @@ export const SHIFTS = gql`
   }
 `;
 
+export const GET_SHIFTS_BY_IDS = gql`
+  query GetShiftsByIds($shiftIds: [ID!]!) {
+    shiftsByIds(shiftIds: $shiftIds) {
+      id
+      startTime
+      endTime
+      employeeIds
+      location
+    }
+  }
+`;
+
 // Mutation to create shifts with all necessary fields
 export const SHIFTS_CREATE = gql`
   mutation CreateShifts($shifts: [ShiftInput!]!) {
@@ -37,6 +49,13 @@ export const SHIFTS_CREATE = gql`
 export const SHIFTS_REMOVE = gql`
   mutation RemoveShifts($ids: [ID!]!) {
     removeShifts(ids: $ids)
+  }
+`;
+
+// Mutation to delete all shifts
+export const SHIFTS_DELETE_ALL = gql`
+  mutation DeleteAllShifts {
+    deleteAllShifts
   }
 `;
 

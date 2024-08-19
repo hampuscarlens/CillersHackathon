@@ -13,6 +13,18 @@ class Query:
     @strawberry.field
     def shifts(self) -> List[Shift]:
         return shift_service.list_shifts()
+    
+    @strawberry.field
+    def shifts_by_ids(self, shift_ids: List[strawberry.ID]) -> List[Shift]:
+        """Fetch and return a list of shifts by a list of shift IDs."""
+        shifts = []
+        for shift_id in shift_ids:
+            shift = shift_service.get_shift_by_id(shift_id)
+            if shift:
+                shifts.append(shift)
+        return shifts
+    
+        
 
 @strawberry.type
 class Mutation:
@@ -29,6 +41,11 @@ class Mutation:
     @strawberry.field(permission_classes=[IsAuthenticated])
     async def remove_shifts(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
         return shift_service.remove_shifts(ids)
+
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    async def delete_all_shifts(self) -> List[strawberry.ID]:
+        """Delete all shifts."""
+        return shift_service.delete_all_shifts()
     
     @strawberry.field(permission_classes=[IsAuthenticated])
     async def add_employees_to_shift(self, shift_id: strawberry.ID, employee_ids: List[strawberry.ID]) -> Shift:

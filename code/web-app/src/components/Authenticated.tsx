@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'; 
 import { ApolloProvider } from '@apollo/client';
 import create_api_client from '../utils/apolloClient';
-import SchedulePage from '../pages/Schedule';
 import EmployeePage from '../pages/Employee'; 
 import Employees from './ListEmployees';
 import GPTQuery from './QueryGpt';
 import Shifts from './ListShifts';
+import SchedulePage from './SchedulePage';
 
 interface AuthenticatedProps {
   userInfo: Record<string, any>; 
@@ -35,7 +35,7 @@ const Authenticated: React.FC<AuthenticatedProps> = ({ userInfo, logout, csrf })
     const renderPage = () => {
         switch (currentPage) {
             case 'schedule':
-                return <SchedulePage goToPage={goToPage} />;
+                return <SchedulePage goToPage={goToPage}/>;
             case 'employee':
                 return <EmployeePage goToPage={goToPage} />;
             case 'gptQuery':
