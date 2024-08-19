@@ -102,6 +102,37 @@ class ShiftService:
         return shift
 
 
+    def update_speciality(self, shift: Shift, new_speciality: specialityRequirement) -> Shift:
+        # Prepare the shift data to be updated (convert to serializable format)
+        
+        new_specialities = []
+        for speciality in shift.specialities:
+            should_update = speciality.speciality == new_speciality.speciality
+            new_specialities.append({
+                'speciality': speciality.speciality,
+                'num_required': new_speciality.num_required if should_update else speciality.num_required,
+            })
+        
+        shift_data = {
+            'start_time': shift.start_time.isoformat(),
+            'end_time': shift.end_time.isoformat(),
+            'specialities': new_specialities,
+            'location': shift.location,
+            'employee_ids': shift.employee_ids
+        }
+
+        # Create a DocSpec object for upsert
+        spec = cb.DocSpec(
+            bucket=env.get_couchbase_bucket(),
+            collection='shifts',
+            key=shift.id,
+            data=shift_data  # Serialized shift data
+        )
+        cb.upsert(env.get_couchbase_conf(), spec)
+        
+        return shift
+
+
     def add_employees_to_shift(self, shift: Shift, employee_ids = List[strawberry.ID]) -> Shift:
         # Prepare the shift data to be updated (convert to serializable format)
         shift_data = {
