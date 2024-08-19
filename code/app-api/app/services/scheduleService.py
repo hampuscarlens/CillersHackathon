@@ -314,7 +314,7 @@ class SchedulingService:
             logger.warning(f"optimization was not successful")
         
 
-        return None
+        return self.problem_status
 
 
     def get_schedule_by_id(self, schedule_id: Optional[str] = None) -> Optional[Schedule]:

@@ -5,7 +5,7 @@ from ..models.models import Employee, EmployeeInput, Schedule  # Import from mod
 from ..services.scheduleService import SchedulingService
 from ..services.shiftService import ShiftService
 from ..services.employeeService import EmployeeService
-import numpy as np
+from datetime import datetime
 
 
 # Initialize the services
@@ -33,9 +33,18 @@ class Mutation:
         Create a new schedule and return it.
         """
         # Create the schedule
-        scheduling_service.create_schedule()
+        problem_status = scheduling_service.create_schedule()
 
-        # Fetch and return the latest schedule (the one just created)
-        latest_schedule = scheduling_service.get_schedule_by_id()
+        if problem_status:
+            # Fetch and return the latest schedule (the one just created)
+            latest_schedule = scheduling_service.get_schedule_by_id()
 
-        return latest_schedule
+            return latest_schedule
+        else:
+            return Schedule(
+                id=str(0),
+                name="Schedule not feasible",
+                start_date=datetime.now(),
+                end_date=datetime.now(),
+                shift_ids=[]
+            )

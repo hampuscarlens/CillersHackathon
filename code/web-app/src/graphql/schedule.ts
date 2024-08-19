@@ -14,3 +14,16 @@ export const GET_SCHEDULE = gql`
   }
 `;
 
+
+export const CREATE_SCHEDULE = gql`
+  mutation CreateSchedule {
+    createSchedule {
+      id
+      name
+      description
+      startDate
+      endDate
+      shiftIds
+    }
+  }
+`;
