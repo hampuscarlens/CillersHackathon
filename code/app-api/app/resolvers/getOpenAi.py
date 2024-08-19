@@ -37,7 +37,7 @@ EMPLOYEE_ID = "53a9f6ba-5c81-11ef-8844-0242ac140002"
 
 def convert_shift_time_into_datetime(shift_time: int, week_day: str, reference_start_day):
     """
-    Given a weekday week_day and a shift time, create a datetime.time object.
+    Given a weekday week_day and a shift time, create a datetime object.
 
     For example, if the shift time is 10 and the weekday is Tuesday,
     the time object should reference to Tuesday the 20th of August 2024 at 10 am.
@@ -70,9 +70,8 @@ def convert_shift_time_ranges_to_unavailability_input(list_of_time_ranges: ListO
     for time_range in list_of_time_ranges.time_ranges:
         unavailability_input_list.append(UnavailabilityInput(
             employee_id=EMPLOYEE_ID,
-            day_of_week=time_range.day,
-            start_time=convert_shift_time_into_datetime(time_range.start_time, time_range.day, REFERENCE_START_OF_WEEK_DAY).time(),
-            end_time=convert_shift_time_into_datetime(time_range.end_time, time_range.day, REFERENCE_START_OF_WEEK_DAY).time()
+            start_time=convert_shift_time_into_datetime(time_range.start_time, time_range.day, REFERENCE_START_OF_WEEK_DAY),
+            end_time=convert_shift_time_into_datetime(time_range.end_time, time_range.day, REFERENCE_START_OF_WEEK_DAY)
         ))
     return unavailability_input_list
 

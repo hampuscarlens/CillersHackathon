@@ -25,10 +25,9 @@ class EmployeeService:
                 unavailability = [
                     UnavailabilityInput(
                         employee_id=r['id'],
-                        day_of_week=avail['day_of_week'],
                         # Convert string times (in start_time and end_time) to time objects
-                        start_time=datetime.strptime(avail['start_time'], "%H:%M:%S").time(),
-                        end_time=datetime.strptime(avail['end_time'], "%H:%M:%S").time()
+                        start_time=datetime.strptime(avail['start_time'], "%Y-%m-%dT%H:%M:%S"),
+                        end_time=datetime.strptime(avail['end_time'], "%Y-%m-%dT%H:%M:%S")
                     ) for avail in r['unavailability']
                 ]
 
@@ -67,7 +66,6 @@ class EmployeeService:
         # Step 2: Prepare the new availability data
         unavailability_data = [
             {
-                'day_of_week': avail.day_of_week,
                 'start_time': avail.start_time.isoformat(),
                 'end_time': avail.end_time.isoformat(),
             }
@@ -110,7 +108,6 @@ class EmployeeService:
             # Prepare availability data
             unavailability_data = [
                 {
-                    'day_of_week': avail.day_of_week,
                     'start_time': avail.start_time.isoformat(),
                     'end_time': avail.end_time.isoformat(),
                 }
@@ -149,7 +146,6 @@ class EmployeeService:
                 shift_ids=[],
                 unavailability=[  # Map UnavailabilityInput to Unavailability
                     UnavailabilityInput(
-                        day_of_week=avail.day_of_week,
                         start_time=avail.start_time,
                         end_time=avail.end_time
                     ) for avail in employee.unavailability
