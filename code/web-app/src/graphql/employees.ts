@@ -15,7 +15,6 @@ export const EMPLOYEES = gql`
       preferences
       shiftIds
       unavailability {
-        dayOfWeek
         startTime
         endTime
       }
@@ -38,7 +37,6 @@ export const EMPLOYEES_CREATE = gql`
       preferences
       shiftIds
       unavailability {
-        dayOfWeek
         startTime
         endTime
       }
@@ -68,7 +66,6 @@ export const EMPLOYEES_CREATED = gql`
       preferences
       shiftIds
       unavailability {
-        dayOfWeek
         startTime
         endTime
       }

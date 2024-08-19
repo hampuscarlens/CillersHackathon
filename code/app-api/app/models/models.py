@@ -9,16 +9,14 @@ from enum import Enum
 class Unavailability:
     id: strawberry.ID
     employee_id: strawberry.ID
-    day_of_week: Optional[str]  
-    start_time: time  # Start of unavailability
-    end_time: time  # End of unavailability
+    start_time: datetime  # Start of unavailability
+    end_time: datetime  # End of unavailability
 
 @strawberry.input
 class UnavailabilityInput:
     employee_id: strawberry.ID  # ID of the employee
-    day_of_week: Optional[str] = None  # Day of the week (e.g., "Monday"), optional
-    start_time: time  # Start time of unavailability
-    end_time: time  # End time of unavailability
+    start_time: datetime  # Start time of unavailability
+    end_time: datetime  # End time of unavailability
 
 
 """A GraphQL type (strawberry.type) representing an employee in the system"""

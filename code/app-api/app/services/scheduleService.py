@@ -203,19 +203,7 @@ class SchedulingService:
         # No employee can work when they are unavailable
         for i in range(num_employees):
             employee_unavailability = employees[i].unavailability
-            
-            # Temp test
-            if i == 1:
-                employee_unavailability = [
-                    # For testing purposes, we set unavailability to 10-12 on Monday
-                    UnavailabilityInput(
-                    employee_id=employees[i].id,
-                    day_of_week="monday",
-                    start_time=datetime.combine(datetime(2024, 8, 19), time(10, 0)),
-                    end_time=datetime.combine(datetime(2024, 8, 19), time(12, 0)))
-                    ]
-            
-            
+                        
             for unavailability in employee_unavailability:
                 index_of_unavailable_shift = get_index_of_shift(shifts, unavailability.start_time)
                 if index_of_unavailable_shift is None:
