@@ -3,12 +3,14 @@ import logging
 from enum import Enum
 from pydantic import BaseModel
 import openai
-from ..models.models import UnavailabilityInput
+from ..models.models import UnavailabilityInput, specialityRequirement
 from openai import OpenAI
 from .. import types
 from ..auth import IsAuthenticated
 from ..services.employeeService import EmployeeService
+from ..services.shiftService import ShiftService
 from datetime import datetime, time, date, timedelta
+from typing import Union
 
 
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Ensure you have set your OpenAI API key in your environment variables or another secure method
 api_key = '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'
 employee_service = EmployeeService()
+shift_service = ShiftService()
 
 
 class TimeRange(BaseModel):
@@ -27,6 +30,15 @@ class TimeRange(BaseModel):
 class ListOfTimeRanges(BaseModel):
     time_ranges: list[TimeRange]
 
+class IncreaseRequirementOfShift(BaseModel):
+    role: str
+    new_amount_of_employees: int
+    shift_day: str
+    shift_start_time: int
+
+class ChatGPTResponse(BaseModel):
+    reponse: Union[ListOfTimeRanges, IncreaseRequirementOfShift]
+
 class FurtherQuestionsNeeded(BaseModel):
     further_questions_needed: bool
 
@@ -35,6 +47,12 @@ class FurtherQuestionsNeeded(BaseModel):
 REFERENCE_START_OF_WEEK_DAY = date(2024, 8, 19)
 
 EMPLOYEE_ID = "53a9f6ba-5c81-11ef-8844-0242ac140002"
+
+def find_shift_with_start_time(shifts, start_time):
+    for shift in shifts:
+        if shift.start_time == start_time:
+            return shift
+    return None
 
 def convert_shift_time_into_datetime(shift_time: int, week_day: str, reference_start_day):
     """
@@ -55,7 +73,7 @@ def convert_shift_time_into_datetime(shift_time: int, week_day: str, reference_s
     }
     
     # Get the day offset from the reference start day
-    day_offset = week_day_mapping[week_day]  # E.g., 'Tuesday' -> 1
+    day_offset = week_day_mapping[week_day.lower()]  # E.g., 'Tuesday' -> 1
     
     # Calculate the exact date for the given weekday
     target_date = reference_start_day + timedelta(days=day_offset)
@@ -112,20 +130,24 @@ def convert_list_of_time_ranges_to_string(time_ranges):
     return time_ranges_string
 
 
-def get_time_ranges(client, user_input):
+def get_gpt_response(client, user_input):
     completion = client.beta.chat.completions.parse(
         model="gpt-4o-2024-08-06",
         messages=[
-            {"role": "system", "content": "You are an assistant that interprets when a user is unavailable during the week."},
-            {"role": "system", "content": "You only give answers during the week days, not weekends. Your answers only lie between 8 and 16"},
+            {"role": "system", "content": "You are an assistant that performs one of two tasks."},
+            {"role": "system", "content": "Task 1: You interpret when a user is unavailable during the week. "
+                                           "You only give answers during the week days, not weekends."
+                                           "Your answers only lie between 8 and 16"},
+            {"role": "system", "content": "Task 2: You interpret if more people of a certain role, such as "
+                                            "surgeon or nurse, are needed for a shift."},
             {"role": "user", "content": user_input},
         ],
-        response_format=ListOfTimeRanges,
+        response_format=ChatGPTResponse,
     )
 
     message = completion.choices[0].message
     if message.parsed:
-        return message.parsed
+        return message.parsed.reponse
     else:
         return None
 
@@ -159,19 +181,42 @@ class Query:
 
             logger.info(f"Received prompt: {prompt}")
 
-            response = get_time_ranges(client, prompt)
-            name_of_employee = response.time_ranges[0].person
-            formatted_response = convert_to_shift_time_ranges(response)
+            response = get_gpt_response(client, prompt)
+            logger.info(f"OpenAI response: {response}")
 
-            message_for_printing = convert_list_of_time_ranges_to_string(formatted_response.time_ranges)
-            logger.info(f"OpenAI response: {message_for_printing}")
+            if response is None:
+                return types.Message(message="Sorry, I couldn't understand your request.")
 
-            unavailability_input_list = convert_shift_time_ranges_to_unavailability_input(formatted_response)
-            all_employees = employee_service.list_employees()
-            id_of_employee = find_employee_with_name(all_employees, name_of_employee).id
-            employee_service.set_availability_of_employee(id_of_employee, unavailability_input_list)
+            if isinstance(response, ListOfTimeRanges):
+                message_for_printing = convert_list_of_time_ranges_to_string(response.time_ranges)
 
-            return types.Message(message=message_for_printing)
+                name_of_employee = response.time_ranges[0].person
+                formatted_response = convert_to_shift_time_ranges(response)
+
+                unavailability_input_list = convert_shift_time_ranges_to_unavailability_input(formatted_response)
+                all_employees = employee_service.list_employees()
+                id_of_employee = find_employee_with_name(all_employees, name_of_employee).id
+                employee_service.set_availability_of_employee(id_of_employee, unavailability_input_list)
+
+                return types.Message(message=message_for_printing)
+            else:
+                shift_time_as_datetime = convert_shift_time_into_datetime(response.shift_start_time,
+                                                                          response.shift_day,
+                                                                          REFERENCE_START_OF_WEEK_DAY)
+
+                all_shifts = shift_service.list_shifts()
+                shift = find_shift_with_start_time(all_shifts, shift_time_as_datetime)
+
+                if shift is None:
+                    return types.Message(message="Sorry, I couldn't find the shift you are referring to.")
+                
+                # Change the requirement of the shift
+                speciality_requirement = specialityRequirement(speciality=response.role,
+                                                               num_required=response.new_amount_of_employees)
+
+                shift_service.update_speciality(shift, speciality_requirement)
+
+                return types.Message(message="Updated specialities.")
 
         except Exception as e:
             # Log the exception
