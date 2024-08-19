@@ -10,6 +10,7 @@ export const GET_SCHEDULE = gql`
       startDate
       endDate
       shiftIds
+      createdAt
     }
   }
 `;
@@ -24,6 +25,7 @@ export const CREATE_SCHEDULE = gql`
       startDate
       endDate
       shiftIds
+      createdAt
     }
   }
 `;

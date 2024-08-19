@@ -256,6 +256,7 @@ class SchedulingService:
                 "start_date": entry.start_date.isoformat(),  # Convert datetime to string
                 "end_date": entry.end_date.isoformat(),      # Convert datetime to string
                 "shift_ids": entry.shift_ids,
+                "created_at":entry.created_at.isoformat()
             }
             
             # Insert the data into Couchbase
@@ -305,9 +306,9 @@ class SchedulingService:
                 name="Test Schedule",
                 start_date=start_date,
                 end_date=end_date,
-                shift_ids=[shift.id for shift in self.shifts]
+                shift_ids=[shift.id for shift in self.shifts],
+                created_at=datetime.now()
             )
-
             # # Insert into database
             self.save_schedule([self.schedule])
         else:
@@ -347,7 +348,8 @@ class SchedulingService:
                 description=schedule_data.get('description', ''),
                 start_date=datetime.fromisoformat(schedule_data['start_date']),
                 end_date=datetime.fromisoformat(schedule_data['end_date']),
-                shift_ids=schedule_data['shift_ids']
+                shift_ids=schedule_data['shift_ids'],
+                created_at=datetime.fromisoformat(schedule_data['created_at'])
             )
             return schedule
         except KeyError:
@@ -370,11 +372,12 @@ class SchedulingService:
             result = cb.exec(
                 env.get_couchbase_conf(),
                 f"""
-                SELECT META().id, name, description, start_date, end_date, shift_ids
+                SELECT META().id, name, description, start_date, end_date, shift_ids, created_at
                 FROM {env.get_couchbase_bucket()}._default.schedules
-                ORDER BY end_date DESC LIMIT 1
+                ORDER BY created_at DESC LIMIT 1
                 """
             )
+
             return result[0] if result else None
         except Exception as e:
             logger.error(f"Error fetching latest schedule: {str(e)}")

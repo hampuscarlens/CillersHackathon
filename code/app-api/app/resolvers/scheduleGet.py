@@ -46,5 +46,6 @@ class Mutation:
                 name="Schedule not feasible",
                 start_date=datetime.now(),
                 end_date=datetime.now(),
-                shift_ids=[]
+                shift_ids=[],
+                created_at =datetime.now()
             )

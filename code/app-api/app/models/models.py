@@ -90,4 +90,5 @@ class Schedule:
     start_date: datetime
     end_date: datetime
     shift_ids: List[strawberry.ID]  # Store a list of shift IDs
+    created_at: datetime
 
