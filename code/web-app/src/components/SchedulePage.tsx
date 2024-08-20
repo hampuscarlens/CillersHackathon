@@ -34,14 +34,16 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const daysArray = [];
-
-    for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
-      const formattedDate = d.toISOString().split('T')[0];
+  
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      // Format the date without using toISOString to avoid time zone issues
+      const formattedDate = d.toLocaleDateString('en-CA'); // 'en-CA' ensures yyyy-mm-dd format
       daysArray.push(formattedDate);
     }
-
+  
     return daysArray;
   };
+  
 
   useEffect(() => {
     if (!scheduleLoading && scheduleData && scheduleData.getSchedule) {
@@ -228,129 +230,130 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
         {/* Main Content */}
         <div className="flex flex-col ml-5 w-[82%] max-md:ml-0 max-md:w-full">
           <div className="flex flex-col items-start mt-6 w-full max-md:mt-10 max-md:max-w-full">
-            <h1 className="text-3xl font-bold mb-6">Weekly Employee Schedule</h1>
-            
-            
-            {/* New Schedule Table */}
-            
-            <div className="overflow-x-auto">
-  {scheduleFeasible === false ? (
-    <p className="text-red-500 text-xl font-bold">Not feasible</p>
-  ) : (
-    <table className="min-w-full table-auto border-collapse border border-gray-300">
-  <thead>
-    {days.length > 0 &&
-      days.map((day: any, dayIndex: number) => (
-        <React.Fragment key={dayIndex}>
-          {/* Day row that spans all columns */}
-          <tr>
-            <th colSpan={2} className="border px-6 py-4 bg-gray-200 font-bold text-lg">
-              Day: {day}
-            </th>
-            <th colSpan={2} className="border px-6 py-4 bg-gray-200 font-bold text-lg">
-              Overtime: {scheduleData.getSchedule.description}
-            </th>
-          </tr>
-          {/* Requirements, Shift, and Employees header */}
-          <tr className="bg-gray-100 text-left text-sm uppercase tracking-wider">
-            <th className="border px-6 py-3 font-semibold text-gray-600">Requirements</th>
-            <th className="border px-6 py-3 font-semibold text-gray-600">Shift</th>
-            <th className="border px-6 py-3 font-semibold text-gray-600">Surgeons</th>
-            <th className="border px-6 py-3 font-semibold text-gray-600">Nurses</th>
-          </tr>
-        </React.Fragment>
-      ))}
-  </thead>
-  <tbody>
-    {days.length > 0 ? (
-      days.map((day: any, dayIndex: number) => (
-        <React.Fragment key={dayIndex}>
-          {/* Shifts, Requirements, and Employees */}
-          {shifts.length > 0 ? (
-            shifts.map((shift: any, shiftIndex: number) => (
-              <tr key={`${dayIndex}-${shiftIndex}`} className="bg-gray-50">
-                {/* Requirements column */}
-                <td className="border px-6 py-4">
-                  {shift.specialities && shift.specialities.length > 0 ? (
-                    shift.specialities.map((req: any, index: number) => (
-                      <div key={index}>
-                        <p className="text-sm font-medium">
-                            {console.info(req)}
-                          {req.numRequired} {req.speciality}(s)
-                        </p>
-                      </div>
+          <div className="flex flex-col items-start mt-6 w-full max-md:mt-10 max-md:max-w-full">
+  <h1 className="text-3xl font-bold mb-6">Weekly Employee Schedule</h1>
+
+  {/* Flexbox container to place Overtime and Table side by side */}
+    <div className="flex w-full">
+
+    {/* New Schedule Table */}
+    <div className="overflow-x-auto w-full">
+      {scheduleFeasible === false ? (
+        <p className="text-red-500 text-xl font-bold">Not feasible</p>
+      ) : (
+        days.length > 0 ? (
+          days.map((day: any, dayIndex: number) => {
+            // Filter shifts that occur on the same day
+            const shiftsForDay = shifts.filter((shift: any) => {
+              const shiftDate = new Date(shift.startTime).toISOString().split('T')[0]; // UTC date string
+              const currentDay = new Date(day).toISOString().split('T')[0]; // UTC date string
+              return shiftDate === currentDay; // Match shift date with the day
+            });
+
+            return (
+              <table key={dayIndex} className="min-w-full table-auto border-collapse border border-gray-300 mb-6">
+                <thead>
+                  {/* Day row that spans all columns */}
+                  <tr>
+                    <th colSpan={4} className="border px-6 py-4 bg-gray-200 font-bold text-lg">
+                      Day: {new Date(day).toDateString()}
+                    </th>
+                  </tr>
+                  {/* Requirements, Shift, and Employees header */}
+                  <tr className="bg-gray-100 text-left text-sm uppercase tracking-wider">
+                    <th className="border px-6 py-3 font-semibold text-gray-600">Requirements</th>
+                    <th className="border px-6 py-3 font-semibold text-gray-600">Shift</th>
+                    <th className="border px-6 py-3 font-semibold text-gray-600">Surgeons</th>
+                    <th className="border px-6 py-3 font-semibold text-gray-600">Nurses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Shifts, Requirements, and Employees */}
+                  {shiftsForDay.length > 0 ? (
+                    shiftsForDay.map((shift: any, shiftIndex: number) => (
+                      <tr key={`${dayIndex}-${shiftIndex}`} className="bg-gray-50">
+                        {/* Requirements column */}
+                        <td className="border px-6 py-4">
+                          {shift.specialities && shift.specialities.length > 0 ? (
+                            shift.specialities.map((req: any, index: number) => (
+                              <div key={index}>
+                                <p className="text-sm font-medium">
+                                  {req.numRequired} {req.speciality}(s)
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            'No requirements'
+                          )}
+                        </td>
+                        {/* Shift column */}
+                        <td className="border px-6 py-4">
+                          {new Date(shift.startTime).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                          -{' '}
+                          {new Date(shift.endTime).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        {/* Surgeons column */}
+                        <td className="border px-6 py-4">
+                          {shift.employeeIds?.length > 0 ? (
+                            shift.employeeIds
+                              .filter((id: any) => getEmployeeById(id).speciality === 'Surgeon')
+                              .map((id: any) => (
+                                <div key={id} className="mb-2">
+                                  <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
+                                </div>
+                              ))
+                          ) : (
+                            <p className="text-sm text-gray-500">No surgeons</p>
+                          )}
+                        </td>
+                        {/* Nurses column */}
+                        <td className="border px-6 py-4">
+                          {shift.employeeIds?.length > 0 ? (
+                            shift.employeeIds
+                              .filter((id: any) => getEmployeeById(id).speciality === 'nurse')
+                              .map((id: any) => (
+                                <div key={id} className="mb-2">
+                                  <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
+                                </div>
+                              ))
+                          ) : (
+                            <p className="text-sm text-gray-500">No nurses</p>
+                          )}
+                        </td>
+                      </tr>
                     ))
                   ) : (
-                    'No requirements'
+                    <tr key={`no-shifts-${dayIndex}`} className="bg-gray-50">
+                      <td colSpan={4} className="border px-6 py-4 text-center text-gray-500">
+                        No shifts for this day
+                      </td>
+                    </tr>
                   )}
-                </td>
-                {/* Shift column */}
-                <td className="border px-6 py-4">
-                  {new Date(shift.startTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}{' '}
-                  -{' '}
-                  {new Date(shift.endTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </td>
-                {/* Employees column */}
-                {/* Surgeons column */}
-                <td className="border px-6 py-4">
-                  {shift.employeeIds?.length > 0 ? (
-                    shift.employeeIds
-                      .filter((id: any) => getEmployeeById(id).speciality === 'Surgeon')
-                      .map((id: any) => (
-                        <div key={id} className="mb-2">
-                          <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
-                        </div>
-                      ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No surgeons</p>
-                  )}
-                </td>
-                {/* Nurses column */}
-                <td className="border px-6 py-4">
-                  {shift.employeeIds?.length > 0 ? (
-                    shift.employeeIds
-                      .filter((id: any) => getEmployeeById(id).speciality === 'nurse')
-                      .map((id: any) => (
-                        <div key={id} className="mb-2">
-                          <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
-                        </div>
-                      ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No nurses</p>
-                  )}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr key={`no-shifts-${dayIndex}`} className="bg-gray-50">
-              <td colSpan={4} className="border px-6 py-4 text-center text-gray-500">
-                No shifts
-              </td>
-            </tr>
-          )}
-        </React.Fragment>
-      ))
-    ) : (
-      <tr>
-        <td colSpan={4} className="border px-6 py-4 text-center text-gray-500">
-          No schedule available
-        </td>
-      </tr>
-    )}
-  </tbody>
-</table>
+                </tbody>
+              </table>
+            );
+          })
+        ) : (
+          <p className="text-gray-500">No schedule available</p>
+        )
+      )}
+    </div>
 
-  )}
+    {/* Overtime information */}
+    <div className="mr-6 flex-shrink-0">
+      <p className="text-xl font-bold">Overtime: {scheduleData.getSchedule.description}</p>
+    </div>
+  </div>
 </div>
 
 
-            
+
 
           </div>
 
