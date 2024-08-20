@@ -173,7 +173,7 @@ class EmployeeService:
                 speciality="Surgeon",
                 salary=40000,
                 skill_level=100,
-                preferences=None,
+                preferences="none",
                 unavailability=[]
             )
             employee_inputs.append(employee_input)
@@ -185,10 +185,10 @@ class EmployeeService:
                 age=30,
                 location="Solna",
                 email="snailmail",
-                speciality="Nurse",
+                speciality="nurse",
                 salary=40000,
                 skill_level=100,
-                preferences=None,
+                preferences="none",
                 unavailability=[]
             )
             employee_inputs.append(employee_input)

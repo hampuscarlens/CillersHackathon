@@ -4,6 +4,9 @@ from typing import List
 from datetime import datetime
 from .. import couchbase as cb, env
 from ..models.models import Shift, ShiftInput, specialityRequirement, specialityRequirementInput
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ShiftService:
     """Service for interacting with shifts."""
@@ -110,13 +113,17 @@ class ShiftService:
         new_specialities = []
         for speciality in shift.specialities:
             should_update = speciality.speciality.lower() == new_speciality.speciality.lower()
-            new_specialities.append({
-                'speciality': speciality.speciality,
-                'num_required': new_speciality.num_required if should_update else speciality.num_required,
-            })
             if should_update:
                 updated = True
-                break
+                new_specialities.append({
+                    'speciality': speciality.speciality,
+                    'num_required': new_speciality.num_required if should_update else speciality.num_required,
+                })
+            else:
+                new_specialities.append({
+                'speciality': speciality.speciality,
+                'num_required': speciality.num_required,
+                })            
         if not updated:
             new_specialities.append({
                 'speciality': new_speciality.speciality,

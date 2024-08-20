@@ -31,7 +31,7 @@ def convert_slack_result_to_string(employee_id_to_overtime, employees):
         employee = next((emp for emp in employees if emp.id == employee_id), None)
         if employee:
             if overtime_count > 0.0:
-                slack_result += f"{employee.name}: {overtime_count} shift \n"
+                slack_result += f"{employee.name}: {round(overtime_count)} shift \n"
     return slack_result
 
 
@@ -157,7 +157,7 @@ class SchedulingService:
 
                 specialities = [
                     specialityRequirementInput(speciality="Surgeon", num_required=surgeon_requirements[shift_num]),
-                    specialityRequirementInput(speciality="Nurse", num_required=nurse_requirements[shift_num])
+                    specialityRequirementInput(speciality="nurse", num_required=nurse_requirements[shift_num])
                 ]
 
                 # Create the Shift object without employees
@@ -243,16 +243,15 @@ class SchedulingService:
                 speciality_name = shift_requirement[0]
                 required_count = shift_requirement[1]
 
-                employee_indices_with_speciality = [
-                        i for i, speciality in enumerate(specialities) if speciality == speciality_name
-                ]
+                employee_indices_with_speciality = []
+                for i, speciality in enumerate(specialities):
+                    if speciality.lower() == speciality_name.lower():
+                        employee_indices_with_speciality.append(i)
 
                 # Filter employees by their speciality and sum up their shift assignments
                 constraints.append(
                     cp.sum(x[employee_indices_with_speciality, j]) == required_count
-                )
-            # All shifts must have at least one employee assigned
-            constraints.append(cp.sum(x[:, j]) >= 1)
+                )    
 
         # No employee can work when they are unavailable
         for i in range(num_employees):
@@ -270,7 +269,7 @@ class SchedulingService:
             constraints.append(cp.sum(x[i, :]) <= max_shifts_per_employee + slack[i])
 
         # Minimize slack
-        objective = cp.Minimize(cp.sum(slack))
+        objective = cp.Minimize(cp.sum_squares(slack))
 
         self.problem_status = False   # problem status is false if not solved properly
 
@@ -338,7 +337,7 @@ class SchedulingService:
         self.shifts = self.shift_service.list_shifts()
         
         # Generate the schedule using optimization
-        optimization_output, slack_output = self.generate_schedule(self.employees, self.shifts, 1)
+        optimization_output, slack_output = self.generate_schedule(self.employees, self.shifts, 8)
 
         logger.info(f"Slack: {slack_output}")
 
