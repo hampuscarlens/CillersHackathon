@@ -22,7 +22,23 @@ class Mutation:
     @strawberry.field(permission_classes=[IsAuthenticated])
     async def employee_remove(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
         return employee_service.remove_employees(ids)
+    
+    
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    async def employee_create_demo(self) -> List[Employee]:
+        """
+        This method creates demo employees with predefined data.
+        """
+        # Step 1: List all current employees to get their IDs
+        existing_employees = employee_service.list_employees()
+        existing_employee_ids = [employee.id for employee in existing_employees]
+        
+        # Step 2: Remove all existing employees by their IDs
+        if existing_employee_ids:
+            employee_service.remove_employees(existing_employee_ids)
+        
 
+        return employee_service.create_employees_for_demo()
 
 @strawberry.type
 class Subscription:

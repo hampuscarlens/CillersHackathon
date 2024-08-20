@@ -154,6 +154,55 @@ class EmployeeService:
             created_employees.append(created_employee)
         return created_employees
 
+
+    def create_employees_for_demo(self):
+        # Define surgeons and nurses' names
+        surgeon_names = ["Olivia", "Filippa"]
+        nurse_names = ["Hampus", "Peder", "Per", "Emma", "Albin"]
+        
+        # A list to store the employee input objects
+        employee_inputs = []
+        
+        # Create EmployeeInput for surgeons
+        for surgeon_name in surgeon_names:
+            employee_input = EmployeeInput(
+                name=surgeon_name,
+                age=30,
+                location="Solna",
+                email="snailmail",
+                speciality="Surgeon",
+                salary=40000,
+                skill_level=100,
+                preferences=None,
+                unavailability=[]
+            )
+            employee_inputs.append(employee_input)
+        
+        # Create EmployeeInput for nurses
+        for nurse_name in nurse_names:
+            employee_input = EmployeeInput(
+                name=nurse_name,
+                age=30,
+                location="Solna",
+                email="snailmail",
+                speciality="Nurse",
+                salary=40000,
+                skill_level=100,
+                preferences=None,
+                unavailability=[]
+            )
+            employee_inputs.append(employee_input)
+
+        # Use the create_employees method to create employees in the database
+        created_employees = self.create_employees(employee_inputs)
+        
+        # Optionally, print the created employees
+        for employee in created_employees:
+            print(f"Created employee: {employee.name} with ID: {employee.id}")
+
+        return created_employees
+
+
     def remove_employees(self, ids: List[strawberry.ID]) -> List[strawberry.ID]:
         # Removing employees from Couchbase by their ids
         for id in ids:
