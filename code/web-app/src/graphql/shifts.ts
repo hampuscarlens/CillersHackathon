@@ -25,6 +25,10 @@ export const GET_SHIFTS_BY_IDS = gql`
       endTime
       employeeIds
       location
+      specialities {
+        speciality
+        numRequired
+      }
     }
   }
 `;

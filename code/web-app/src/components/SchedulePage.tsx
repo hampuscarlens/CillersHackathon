@@ -153,10 +153,10 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
   if (scheduleError) return <p>Schedule Error: {scheduleError.message}</p>;
   if (shiftsError) return <p>Shifts Error: {shiftsError.message}</p>;
   if (employeeError) return <p>Employee Error: {employeeError.message}</p>;
-
+  console.info(shiftsData)
   const shifts = shiftsData?.shiftsByIds || [];
   const employees = employeeData?.employees || [];
-
+  console.info(shifts)
   const getEmployeeById = (id: string) => {
     const employee = employees.find((emp: any) => emp.id === id);
     return employee ? employee : 'Unknown Employee';
