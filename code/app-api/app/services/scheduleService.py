@@ -78,6 +78,27 @@ def convert_employee_vector_to_string(employee_vector):
     return output
 
 
+def create_hardcoded_requirements(day_index: int):
+    if day_index == 0:
+        return [
+            [1, 1, 2, 1],
+            [2, 3, 4, 2],
+        ]
+    elif day_index == 1:
+        return [
+            [2, 1, 2, 1],
+            [3, 1, 4, 1],
+        ]
+    elif day_index == 2:
+        return [
+            [1, 1, 1, 2],
+            [2, 3, 2, 3],
+        ]
+    else :
+        return [
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+        ]
 
 
 
@@ -109,7 +130,6 @@ class SchedulingService:
         OBS currently we have the same speciality requirements for each shift and it is hardcoded 
         """
 
-        specialities = [specialityRequirementInput(speciality="Surgeon", num_required=1)]  # Hardcoded
         generated_shifts = []
         shift_start_time = time(8, 0)  # Shifts start at 8:00 AM
         shift_end_time = time(16, 0)  # Last shift must end by 5:00 PM (17:00)
@@ -124,6 +144,8 @@ class SchedulingService:
             # The start of the first shift at 8:00 AM
             current_shift_start = datetime.combine(current_date, shift_start_time)
 
+            [surgeon_requirements, nurse_requirements] = create_hardcoded_requirements(day)
+
             # For each day, generate the specified number of shifts
             for shift_num in range(num_shifts_per_day):
                 shift_start = current_shift_start + timedelta(hours=shift_num * shift_duration)
@@ -133,11 +155,16 @@ class SchedulingService:
                 if shift_end.time() > shift_end_time:
                     break  # Don't generate a shift that would go beyond 5 PM
 
+                specialities = [
+                    specialityRequirementInput(speciality="Surgeon", num_required=surgeon_requirements[shift_num]),
+                    specialityRequirementInput(speciality="Nurse", num_required=nurse_requirements[shift_num])
+                ]
+
                 # Create the Shift object without employees
                 shift = ShiftInput(
                     start_time=shift_start,
                     end_time=shift_end,
-                    specialities=specialities if shift_num == 0 else [],  # List of specialityRequirementInput
+                    specialities=specialities,
                     location=location,
                     employee_ids=[]  # No employees assigned yet
                 )

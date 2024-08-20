@@ -13,7 +13,7 @@ employee_service = EmployeeService()
 shift_service = ShiftService()
 scheduling_service = SchedulingService(employee_service, shift_service)
 start_date = datetime(2024, 8, 19)  
-end_date = datetime(2024, 8, 19)
+end_date = datetime(2024, 8, 21)
 
 @strawberry.type
 class Query:
