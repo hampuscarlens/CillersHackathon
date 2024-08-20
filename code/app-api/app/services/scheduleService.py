@@ -30,7 +30,8 @@ def convert_slack_result_to_string(employee_id_to_overtime, employees):
     for employee_id, overtime_count in employee_id_to_overtime.items():
         employee = next((emp for emp in employees if emp.id == employee_id), None)
         if employee:
-            slack_result += f"Employee {employee.name} has {overtime_count} overtime shifts.\n"
+            if overtime_count > 0.0:
+                slack_result += f"{employee.name}: {overtime_count}h \n"
     return slack_result
 
 
@@ -323,8 +324,12 @@ class SchedulingService:
 
         if self.problem_status:
             formatted_slack = interpret_slack_variables(slack_output, self.employees)
-            logger.info(f"Overtime: {convert_slack_result_to_string(formatted_slack, self.employees)}")
+            logger.info(f"Overtime: {convert_slack_result_to_string(formatted_slack, self.employees)} \n")
+            formatted_slack = convert_slack_result_to_string(formatted_slack, self.employees)
 
+            if len(formatted_slack) == 0:
+                formatted_slack = "No overtime needed"
+            
             # TODO: Use the slack info to add to database and display in the UI
 
             # Convert the optimization output to a list of employees assigned to each shift
@@ -336,6 +341,7 @@ class SchedulingService:
             self.schedule = Schedule(
                 id=str(uuid.uuid1()),
                 name="Test Schedule",
+                description=formatted_slack,
                 start_date=start_date,
                 end_date=end_date,
                 shift_ids=[shift.id for shift in self.shifts],

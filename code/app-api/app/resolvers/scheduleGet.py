@@ -44,6 +44,7 @@ class Mutation:
             return Schedule(
                 id=str(0),
                 name="Schedule not feasible",
+                description="none",
                 start_date=datetime.now(),
                 end_date=datetime.now(),
                 shift_ids=[],
