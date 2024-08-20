@@ -31,7 +31,7 @@ def convert_slack_result_to_string(employee_id_to_overtime, employees):
         employee = next((emp for emp in employees if emp.id == employee_id), None)
         if employee:
             if overtime_count > 0.0:
-                slack_result += f"{employee.name}: {overtime_count}h \n"
+                slack_result += f"{employee.name}: {overtime_count} shift \n"
     return slack_result
 
 

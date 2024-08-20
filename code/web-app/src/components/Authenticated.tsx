@@ -52,40 +52,6 @@ const Authenticated: React.FC<AuthenticatedProps> = ({ userInfo, logout, csrf })
     return (
         <ApolloProvider client={create_api_client(csrf, on_graphql_error)}>
             <div>
-                <div className="flex justify-center space-x-4 my-4">
-                    {/* Navigation buttons for page switching */}
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => goToPage('schedule')}
-                    >
-                        Go to Schedule
-                    </button>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => goToPage('employee')}
-                    >
-                        Go to Employee
-                    </button>
-                    <button
-                        className="btn btn-accent"
-                        onClick={() => goToPage('employees')}
-                    >
-                        Go to Employee List
-                    </button>
-                    <button
-                        className="btn btn-info"
-                        onClick={() => goToPage('gptQuery')}
-                    >
-                        Go to GPT Query
-                    </button>
-                    <button
-                        className="btn btn-warning"
-                        onClick={() => goToPage('shifts')}
-                    >
-                        Go to Shifts
-                    </button>
-                </div>
-
                 {renderPage()}
             </div>
         </ApolloProvider>

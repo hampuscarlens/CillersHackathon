@@ -12,7 +12,7 @@ interface SchedulePageProps {
 
 
 const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
-  const { data: scheduleData, loading: scheduleLoading, error: scheduleError } = useQuery(GET_SCHEDULE);
+  const { data: scheduleData, loading: scheduleLoading, error: scheduleError, refetch: refetchSchedule } = useQuery(GET_SCHEDULE);
   const [shiftIds, setShiftIds] = useState<string[]>([]);
   const [days, setDays] = useState<any[]>([]);
   const [scheduleFeasible, setScheduleFeasible] = useState<boolean | null>(null); // To track feasibility
@@ -56,9 +56,11 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
     }
   }, [scheduleLoading, scheduleData]);
 
-  const { data: shiftsData, loading: shiftsLoading, error: shiftsError } = useQuery(GET_SHIFTS_BY_IDS, {
+  const { data: shiftsData, loading: shiftsLoading, error: shiftsError, refetch: refetchShifts } = useQuery(GET_SHIFTS_BY_IDS, {
     variables: { shiftIds: shiftIds },
-  });
+    skip: shiftIds.length === 0, // Avoid querying if there are no shiftIds
+});
+
 
   const employeeIds = shiftsData?.shiftsByIds?.flatMap((shift: any) => shift.employeeIds) || [];
 
@@ -86,7 +88,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
             </div>
 
             <div className="flex gap-2 mt-6">
-              <img
+            <img
                 loading="lazy"
                 src="https://cdn.builder.io/api/v1/image/assets/TEMP/8d3cdba5420069bcd4a047ac2c2f57d0a7e18d4bcd11dffae08b79b10aed70cc?placeholderIfAbsent=true&apiKey=4a298b04045740b88c962cc4cff65977"
                 className="object-contain shrink-0 my-auto w-6 aspect-square"
@@ -96,6 +98,13 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
               </button>
             </div>
 
+            <div className="flex gap-2 mt-6">
+              <button className="basis-auto">
+
+                {createScheduleLoading ? 'Generating...' : 'Generate schedule'}
+              </button>
+            </div>
+            
             <div className="flex gap-2 mt-6">
               <button onClick={() => goToPage('gptQuery')} className="basis-auto">
                 Ask chatGPT
@@ -113,15 +122,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
         {/* Main Content */}
         <div className="flex flex-col ml-5 w-[82%] max-md:ml-0 max-md:w-full">
           <div className="flex flex-col items-start mt-6 w-full max-md:mt-10 max-md:max-w-full">
-            <h1 className="text-3xl font-bold mb-6">Weekly Employee Schedule</h1>
-            <div className="flex justify-center items-center">
-                <button className="btn">
-                <span className="loading loading-spinner"></span>
-                Loading...
-                </button>
-            </div>
-        
-          {/* Ask chat gpt text input */}
+            {/* Ask chat gpt text input */}
           <div className="flex flex-wrap gap-5 justify-between px-7 py-5 mt-10 text-base bg-zinc-100 rounded-[40px] text-stone-500 max-md:px-5 max-md:mr-2 max-md:max-w-full">
               <input
                 type="text"
@@ -138,15 +139,13 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
                 onClick={handleQuery} // Optionally trigger submit on image click
                 />
           </div>
-
-          {/* Generate Schedule Button */}
-          <div className="flex gap-2 justify-center text-base font-medium leading-none text-center mt-10">
-            <button
-              className="px-6 py-3 text-white bg-blue-500 rounded-lg hover:bg-blue-700"
-            >
-              {createScheduleLoading ? 'Generating...' : 'Generate schedule'}
-            </button>
-          </div>
+            <h1 className="text-3xl font-bold mb-6">Weekly Employee Schedule</h1>
+            <div className="flex justify-center items-center">
+                <button className="btn">
+                <span className="loading loading-spinner"></span>
+                Loading...
+                </button>
+            </div>
         </div>
       </div>
     </div>
@@ -168,19 +167,30 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
   // Handle Generate Schedule
   const handleGenerateSchedule = async () => {
     try {
-      const { data } = await createSchedule(); // Call the mutation and get the result
-
-      // Check if schedule creation is successful or not
+      const { data } = await createSchedule();
+  
+      // Check if schedule creation was successful
       if (data.createSchedule.id && data.createSchedule.id !== "0") {
-        setScheduleFeasible(true);  // Schedule was successfully created
+        setScheduleFeasible(true);
+  
+        // Refetch the schedule data to update the state with the newly generated schedule
+        await refetchSchedule();
+  
+        // Update shiftIds with the new shiftIds from the generated schedule
+        const newShiftIds = data.createSchedule.shiftIds;
+        setShiftIds(newShiftIds);
+  
+        // Refetch shifts based on the new shiftIds
+        await refetchShifts({ shiftIds: newShiftIds });
       } else {
-        setScheduleFeasible(false); // Schedule creation failed or was "not feasible"
+        setScheduleFeasible(false);
       }
     } catch (error) {
       console.error('Error creating schedule:', error);
-      setScheduleFeasible(false);  // Set to "not feasible" in case of an error
+      setScheduleFeasible(false);
     }
   };
+  
 
   
 
@@ -203,7 +213,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
             </div>
 
             <div className="flex gap-2 mt-6">
-              <img
+            <img
                 loading="lazy"
                 src="https://cdn.builder.io/api/v1/image/assets/TEMP/8d3cdba5420069bcd4a047ac2c2f57d0a7e18d4bcd11dffae08b79b10aed70cc?placeholderIfAbsent=true&apiKey=4a298b04045740b88c962cc4cff65977"
                 className="object-contain shrink-0 my-auto w-6 aspect-square"
@@ -213,6 +223,13 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
               </button>
             </div>
 
+            <div className="flex gap-2 mt-6">
+              <button onClick={handleGenerateSchedule} className="basis-auto">
+
+                {createScheduleLoading ? 'Generating...' : 'Generate schedule'}
+              </button>
+            </div>
+            
             <div className="flex gap-2 mt-6">
               <button onClick={() => goToPage('gptQuery')} className="basis-auto">
                 Ask chatGPT
@@ -229,161 +246,172 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ goToPage }) => {
 
         {/* Main Content */}
         <div className="flex flex-col ml-5 w-[82%] max-md:ml-0 max-md:w-full">
+
+        {/* Ask chat gpt text input */}
+        <div className="flex flex-wrap gap-5 justify-between px-7 py-5 mt-10 text-base bg-zinc-100 rounded-[40px] text-stone-500 max-md:px-5 max-md:mr-2 max-md:max-w-full">
+                    <input
+                        type="text"
+                        value={queryText}
+                        onChange={(e) => setQueryText(e.target.value)}
+                        placeholder="Search for or ask me to do anything"
+                        className="bg-transparent border-none focus:outline-none flex-grow text-stone-500"
+                    />
+                    <img
+                        loading="lazy"
+                        src="https://cdn.builder.io/api/v1/image/assets/TEMP/20d3779ace53450987f3d81961fc0222d012748b3eca00741d25951cea4d060e?placeholderIfAbsent=true&apiKey=4a298b04045740b88c962cc4cff65977"
+                        className="object-contain shrink-0 w-6 aspect-square transition-transform duration-300 ease-in-out hover:scale-150 hover:opacity-80 cursor-pointer"
+                        alt="search icon"
+                        onClick={handleQuery} // Optionally trigger submit on image click
+                        />
+                </div>
+
           <div className="flex flex-col items-start mt-6 w-full max-md:mt-10 max-md:max-w-full">
           <div className="flex flex-col items-start mt-6 w-full max-md:mt-10 max-md:max-w-full">
-  <h1 className="text-3xl font-bold mb-6">Weekly Employee Schedule</h1>
+        <h1 className="text-3xl font-bold mb-6">Weekly Employee Schedule</h1>
 
-  {/* Flexbox container to place Overtime and Table side by side */}
-    <div className="flex w-full">
+        {/* Flexbox container to place Overtime and Table side by side */}
+            <div className="flex w-full">
 
-    {/* New Schedule Table */}
-    <div className="overflow-x-auto w-full">
-      {scheduleFeasible === false ? (
-        <p className="text-red-500 text-xl font-bold">Not feasible</p>
-      ) : (
-        days.length > 0 ? (
-          days.map((day: any, dayIndex: number) => {
-            // Filter shifts that occur on the same day
-            const shiftsForDay = shifts.filter((shift: any) => {
-              const shiftDate = new Date(shift.startTime).toISOString().split('T')[0]; // UTC date string
-              const currentDay = new Date(day).toISOString().split('T')[0]; // UTC date string
-              return shiftDate === currentDay; // Match shift date with the day
-            });
+            {/* New Schedule Table */}
+            <div className="overflow-x-auto w-full">
+            {scheduleFeasible === false ? (
+                <p className="text-red-500 text-xl font-bold">Not feasible</p>
+            ) : (
+                days.length > 0 ? (
+                days.map((day: any, dayIndex: number) => {
+                    // Filter shifts that occur on the same day
+                    const shiftsForDay = shifts.filter((shift: any) => {
+                    const shiftDate = new Date(shift.startTime).toISOString().split('T')[0]; // UTC date string
+                    const currentDay = new Date(day).toISOString().split('T')[0]; // UTC date string
+                    return shiftDate === currentDay; // Match shift date with the day
+                    });
 
-            return (
-              <table key={dayIndex} className="min-w-full table-auto border-collapse border border-gray-300 mb-6">
-                <thead>
-                  {/* Day row that spans all columns */}
-                  <tr>
-                    <th colSpan={4} className="border px-6 py-4 bg-gray-200 font-bold text-lg">
-                      Day: {new Date(day).toDateString()}
-                    </th>
-                  </tr>
-                  {/* Requirements, Shift, and Employees header */}
-                  <tr className="bg-gray-100 text-left text-sm uppercase tracking-wider">
-                    <th className="border px-6 py-3 font-semibold text-gray-600">Requirements</th>
-                    <th className="border px-6 py-3 font-semibold text-gray-600">Shift</th>
-                    <th className="border px-6 py-3 font-semibold text-gray-600">Surgeons</th>
-                    <th className="border px-6 py-3 font-semibold text-gray-600">Nurses</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Shifts, Requirements, and Employees */}
-                  {shiftsForDay.length > 0 ? (
-                    shiftsForDay.map((shift: any, shiftIndex: number) => (
-                      <tr key={`${dayIndex}-${shiftIndex}`} className="bg-gray-50">
-                        {/* Requirements column */}
-                        <td className="border px-6 py-4">
-                          {shift.specialities && shift.specialities.length > 0 ? (
-                            shift.specialities.map((req: any, index: number) => (
-                              <div key={index}>
-                                <p className="text-sm font-medium">
-                                  {req.numRequired} {req.speciality}(s)
-                                </p>
-                              </div>
+                    return (
+                    <table key={dayIndex} className="min-w-full table-auto border-collapse border border-gray-300 mb-6">
+                        <thead>
+                        {/* Day row that spans all columns */}
+                        <tr>
+                            <th colSpan={4} className="border px-6 py-4 bg-gray-200 font-bold text-lg">
+                            Day: {new Date(day).toDateString()}
+                            </th>
+                        </tr>
+                        {/* Requirements, Shift, and Employees header */}
+                        <tr className="bg-gray-100 text-left text-sm uppercase tracking-wider">
+                            <th className="border px-6 py-3 font-semibold text-gray-600">Requirements</th>
+                            <th className="border px-6 py-3 font-semibold text-gray-600">Shift</th>
+                            <th className="border px-6 py-3 font-semibold text-gray-600">Surgeons</th>
+                            <th className="border px-6 py-3 font-semibold text-gray-600">Nurses</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {/* Shifts, Requirements, and Employees */}
+                        {shiftsForDay.length > 0 ? (
+                            shiftsForDay.map((shift: any, shiftIndex: number) => (
+                            <tr key={`${dayIndex}-${shiftIndex}`} className="bg-gray-50">
+                                {/* Requirements column */}
+                                <td className="border px-6 py-4">
+                                {shift.specialities && shift.specialities.length > 0 ? (
+                                    shift.specialities.map((req: any, index: number) => (
+                                    <div key={index}>
+                                        <p className="text-sm font-medium">
+                                        {req.numRequired} {req.speciality}(s)
+                                        </p>
+                                    </div>
+                                    ))
+                                ) : (
+                                    'No requirements'
+                                )}
+                                </td>
+                                {/* Shift column */}
+                                <td className="border px-6 py-4">
+                                {new Date(shift.startTime).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                })}{' '}
+                                -{' '}
+                                {new Date(shift.endTime).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                })}
+                                </td>
+                                {/* Surgeons column */}
+                                <td className="border px-6 py-4">
+                                {shift.employeeIds?.length > 0 ? (
+                                    shift.employeeIds
+                                    .filter((id: any) => getEmployeeById(id).speciality === 'Surgeon')
+                                    .map((id: any) => (
+                                        <div key={id} className="mb-2">
+                                        <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-gray-500">No surgeons</p>
+                                )}
+                                </td>
+                                {/* Nurses column */}
+                                <td className="border px-6 py-4">
+                                {shift.employeeIds?.length > 0 ? (
+                                    shift.employeeIds
+                                    .filter((id: any) => getEmployeeById(id).speciality === 'nurse')
+                                    .map((id: any) => (
+                                        <div key={id} className="mb-2">
+                                        <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-gray-500">No nurses</p>
+                                )}
+                                </td>
+                            </tr>
                             ))
-                          ) : (
-                            'No requirements'
-                          )}
-                        </td>
-                        {/* Shift column */}
-                        <td className="border px-6 py-4">
-                          {new Date(shift.startTime).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}{' '}
-                          -{' '}
-                          {new Date(shift.endTime).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </td>
-                        {/* Surgeons column */}
-                        <td className="border px-6 py-4">
-                          {shift.employeeIds?.length > 0 ? (
-                            shift.employeeIds
-                              .filter((id: any) => getEmployeeById(id).speciality === 'Surgeon')
-                              .map((id: any) => (
-                                <div key={id} className="mb-2">
-                                  <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
-                                </div>
-                              ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No surgeons</p>
-                          )}
-                        </td>
-                        {/* Nurses column */}
-                        <td className="border px-6 py-4">
-                          {shift.employeeIds?.length > 0 ? (
-                            shift.employeeIds
-                              .filter((id: any) => getEmployeeById(id).speciality === 'nurse')
-                              .map((id: any) => (
-                                <div key={id} className="mb-2">
-                                  <p className="text-sm font-medium">{getEmployeeById(id).name}</p>
-                                </div>
-                              ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No nurses</p>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr key={`no-shifts-${dayIndex}`} className="bg-gray-50">
-                      <td colSpan={4} className="border px-6 py-4 text-center text-gray-500">
-                        No shifts for this day
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            );
-          })
-        ) : (
-          <p className="text-gray-500">No schedule available</p>
-        )
-      )}
-    </div>
+                        ) : (
+                            <tr key={`no-shifts-${dayIndex}`} className="bg-gray-50">
+                            <td colSpan={4} className="border px-6 py-4 text-center text-gray-500">
+                                No shifts for this day
+                            </td>
+                            </tr>
+                        )}
+                        </tbody>
+                    </table>
+                    );
+                })
+                ) : (
+                <p className="text-gray-500">No schedule available</p>
+                )
+            )}
+            </div>
 
-    {/* Overtime information */}
-    <div className="mr-6 flex-shrink-0">
-      <p className="text-xl font-bold">Overtime: {scheduleData.getSchedule.description}</p>
-    </div>
-  </div>
-</div>
+            {/* Overtime information */}
+            {scheduleData?.getSchedule?.description && (
+            <div className="mt-0 ml-10 mb-6 p-4 bg-gray-100 rounded-lg shadow-md max-w-lg">
+                <div className="flex items-center">
+                    <svg
+                        className="w-10 h-10 text-blue-500 mr-3" // Increased size
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 8v4l3 3m4-7a9 9 0 11-8-4.9m0 0v.01"
+                        />
+                    </svg>
+                    <h2 className="text-2xl font-bold text-gray-800">Overtime Information</h2>
+                    </div>
+                <p className="mt-3 text-gray-700 text-lg">
+                {scheduleData.getSchedule.description}
+                </p>
+            </div>
+            )}
 
 
+                </div>
+        </div>
 
-
-          </div>
-
-          {/* Ask chat gpt text input */}
-          <div className="flex flex-wrap gap-5 justify-between px-7 py-5 mt-10 text-base bg-zinc-100 rounded-[40px] text-stone-500 max-md:px-5 max-md:mr-2 max-md:max-w-full">
-              <input
-                type="text"
-                value={queryText}
-                onChange={(e) => setQueryText(e.target.value)}
-                placeholder="Search for or ask me to do anything"
-                className="bg-transparent border-none focus:outline-none flex-grow text-stone-500"
-              />
-              <img
-                loading="lazy"
-                src="https://cdn.builder.io/api/v1/image/assets/TEMP/20d3779ace53450987f3d81961fc0222d012748b3eca00741d25951cea4d060e?placeholderIfAbsent=true&apiKey=4a298b04045740b88c962cc4cff65977"
-                className="object-contain shrink-0 w-6 aspect-square transition-transform duration-300 ease-in-out hover:scale-150 hover:opacity-80 cursor-pointer"
-                alt="search icon"
-                onClick={handleQuery} // Optionally trigger submit on image click
-                />
-          </div>
-
-          {/* Generate Schedule Button */}
-          <div className="flex gap-2 justify-center text-base font-medium leading-none text-center mt-10">
-            <button
-              onClick={handleGenerateSchedule} 
-              className="px-6 py-3 text-white bg-blue-500 rounded-lg hover:bg-blue-700"
-            >
-              {createScheduleLoading ? 'Generating...' : 'Generate schedule'}
-            </button>
-          </div>
+                </div>
         </div>
       </div>
     </div>

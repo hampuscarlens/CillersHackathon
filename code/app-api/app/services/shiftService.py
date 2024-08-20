@@ -15,6 +15,7 @@ class ShiftService:
             f"""
             SELECT META().id, start_time, end_time, specialities, location, employee_ids
             FROM {env.get_couchbase_bucket()}._default.shifts
+            ORDER BY start_time
             """
         )
         # Map the result to the Shift model
