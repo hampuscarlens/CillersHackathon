@@ -21,6 +21,15 @@ employee_service = EmployeeService()
 shift_service = ShiftService()
 
 
+def convert_role_to_correct_format(role):
+    if role.lower() == "nurse":
+        return "nurse"
+    elif role.lower() == "surgeon":
+        return "Surgeon"
+    else:
+        return role
+
+
 class TimeRange(BaseModel):
     start_time: int
     end_time: int
@@ -208,13 +217,16 @@ class Query:
                 shift = find_shift_with_start_time(all_shifts, shift_time_as_datetime)
 
                 if shift is None:
+                    logger.info(f"Shift not found for time: {shift_time_as_datetime}")
                     return types.Message(message="Sorry, I couldn't find the shift you are referring to.")
                 
                 # Change the requirement of the shift
-                speciality_requirement = specialityRequirement(speciality=response.role,
+                speciality_requirement = specialityRequirement(speciality=convert_role_to_correct_format(response.role),
                                                                num_required=response.new_amount_of_employees)
 
                 shift_service.update_speciality(shift, speciality_requirement)
+
+                logger.info(f"Updated speciality requirement for shift: {shift.id}")
 
                 return types.Message(message="Updated specialities.")
 

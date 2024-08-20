@@ -304,18 +304,11 @@ class SchedulingService:
             
         return 
 
-    def create_schedule(self):
+    def create_schedule(self, start_date, end_date):
         """Generate a schedule for employees."""
         self.employees = self.employee_service.list_employees()
         
-        # Hardcoded start and end dates for the schedule
-        start_date = datetime(2024, 8, 19)  # Start date (Monday)
-        end_date = datetime(2024, 8, 19)    # End date (Monday)
-
-        # Generate fixed shifts for the schedule
-        shift_ids = self.generate_shifts_for_schedule(start_date=start_date, end_date=end_date, shift_duration=2, num_shifts_per_day=4)
-        
-        self.shifts = [self.shift_service.get_shift_by_id(id) for id in shift_ids]
+        self.shifts = self.shift_service.list_shifts()
         
         # Generate the schedule using optimization
         optimization_output, slack_output = self.generate_schedule(self.employees, self.shifts, 1)

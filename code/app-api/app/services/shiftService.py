@@ -105,12 +105,21 @@ class ShiftService:
     def update_speciality(self, shift: Shift, new_speciality: specialityRequirement) -> Shift:
         # Prepare the shift data to be updated (convert to serializable format)
         
+        updated = False
         new_specialities = []
         for speciality in shift.specialities:
-            should_update = speciality.speciality == new_speciality.speciality
+            should_update = speciality.speciality.lower() == new_speciality.speciality.lower()
             new_specialities.append({
                 'speciality': speciality.speciality,
                 'num_required': new_speciality.num_required if should_update else speciality.num_required,
+            })
+            if should_update:
+                updated = True
+                break
+        if not updated:
+            new_specialities.append({
+                'speciality': new_speciality.speciality,
+                'num_required': new_speciality.num_required,
             })
         
         shift_data = {
