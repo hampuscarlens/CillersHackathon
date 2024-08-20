@@ -390,6 +390,26 @@ class SchedulingService:
             logger.error(f"Error fetching schedule: {str(e)}")
             return None
 
+
+    def create_schedule_without_employees(self, start_date, end_date):
+        self.shifts = self.shift_service.list_shifts()
+
+        self.schedule = Schedule(
+            id=str(uuid.uuid1()),
+            name="Test Schedule",
+            description="",
+            start_date=start_date,
+            end_date=end_date,
+            shift_ids=[shift.id for shift in self.shifts],
+            created_at=datetime.now()
+        )
+
+        self.save_schedule([self.schedule])
+
+        return True
+
+
+
     def get_latest_schedule_data(self) -> Optional[dict]:
         """
         Fetch the latest schedule from the database.

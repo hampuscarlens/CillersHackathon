@@ -12,8 +12,8 @@ from datetime import datetime
 employee_service = EmployeeService()
 shift_service = ShiftService()
 scheduling_service = SchedulingService(employee_service, shift_service)
-start_date = datetime(2024, 8, 19)  # Start date (Monday)
-end_date = datetime(2024, 8, 19)    # End date (Monday)
+start_date = datetime(2024, 8, 19)  
+end_date = datetime(2024, 8, 19)
 
 @strawberry.type
 class Query:
@@ -66,3 +66,14 @@ class Mutation:
                 shift_ids=[],
                 created_at =datetime.now()
             )
+
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    async def create_empty_schedule(self) -> Schedule:
+        """
+        Create a schedule with shifts but with no employees.
+        """
+        scheduling_service.create_schedule_without_employees(start_date=start_date, end_date=end_date)
+
+        latest_schedule = scheduling_service.get_schedule_by_id()
+
+        return latest_schedule
