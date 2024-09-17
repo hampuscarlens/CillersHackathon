@@ -8,7 +8,7 @@ from ..auth import IsAuthenticated
 logger = logging.getLogger(__name__)
 
 # Ensure you have set your OpenAI API key in your environment variables or another secure method
-api_key = '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'
+api_key = ''
 
 @strawberry.type
 class Query:
